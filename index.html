@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Judge Daily Briefing | CJBS MBA Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #FAF9F6;
+      color: #1A1F2C;
+    }
+    .serif { font-family: 'Newsreader', serif; }
+    .cambridge-navy { background-color: #0F233C; }
+    .ft-badge { background-color: #FFF1E5; color: #990F3D; border: 1px solid #F2DFCE; }
+    .econ-badge { background-color: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+    .nyt-badge { background-color: #F1F5F9; color: #0F172A; border: 1px solid #CBD5E1; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP INSTITUTIONAL BAR -->
+  <header class="cambridge-navy text-white border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded bg-amber-400 text-slate-950 font-bold serif text-xl flex items-center justify-center shadow">
+          J
+        </div>
+        <div>
+          <h1 class="serif text-lg sm:text-xl font-bold tracking-tight leading-none">The Judge Daily Briefing</h1>
+          <p class="text-[11px] text-amber-300/90 tracking-wider uppercase mt-0.5">Cambridge Judge Business School • MBA Cohort</p>
+        </div>
+      </div>
+
+      <!-- AUTHENTICATED NAV CONTROLS -->
+      <div id="user-nav" class="hidden items-center gap-3">
+        <button onclick="toggleProfileDrawer()" class="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="nav-student-name">Student Profile</span>
+        </button>
+        <button onclick="signOut()" class="text-xs text-slate-300 hover:text-white px-2 py-1">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LOGIN GATE (SHOWN WHEN LOGGED OUT) -->
+  <main id="auth-screen" class="flex-1 flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white border border-stone-200 rounded-2xl shadow-sm p-8">
+      <div class="inline-block px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold mb-4">
+        CJBS Institutional Access
+      </div>
+      <h2 class="serif text-3xl font-bold text-slate-900 mb-2">Morning Executive Digest</h2>
+      <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+        Curated daily summaries from the <em>Financial Times</em>, <em>The Economist</em>, and <em>The New York Times</em>—tagged to your MBA curriculum with personal study notes.
+      </p>
+
+      <form onsubmit="handleMagicLinkLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+            University Email (@cam.ac.uk or @jbs.cam.ac.uk)
+          </label>
+          <input id="login-email" type="email" required placeholder="crsid@cam.ac.uk"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+        </div>
+        <button id="login-btn" type="submit"
+          class="w-full cambridge-navy hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-sm">
+          Send Cambridge SSO Magic Link
+        </button>
+      </form>
+      <p id="login-feedback" class="mt-4 text-xs text-center text-slate-600 hidden"></p>
+      <div class="mt-6 pt-5 border-t border-stone-100 text-[11px] text-slate-500 leading-relaxed">
+        <strong>Pro Subscription Access:</strong> Full article links open directly via your active Cambridge University / CJBS institutional credentials.
+      </div>
+    </div>
+  </main>
+
+  <!-- MAIN BRIEFING DASHBOARD (SHOWN WHEN LOGGED IN) -->
+  <main id="app-screen" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- EDITION DATE & PERSONALIZATION BAR -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-stone-200">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-800 mb-1">
+          <span>Daily Edition</span>
+          <span>•</span>
+          <span id="edition-count-badge">Loading articles...</span>
+        </div>
+        <h2 id="edition-heading" class="serif text-3xl sm:text-4xl font-bold text-slate-900">Today's Briefing</h2>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Date Selector -->
+        <div class="flex items-center gap-2 bg-white border border-stone-300 rounded-lg px-3 py-1.5 shadow-2xs">
+          <label for="date-picker" class="text-xs font-semibold text-slate-500">Edition Date:</label>
+          <input type="date" id="date-picker" onchange="loadArticlesForDate(this.value)"
+            class="text-xs font-semibold text-slate-900 focus:outline-none bg-transparent" />
+        </div>
+
+        <!-- Custom Feed Toggle -->
+        <button id="my-feed-toggle" onclick="toggleMyFeedMode()"
+          class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition">
+          My Custom Feed
+        </button>
+
+        <!-- Favourites Toggle -->
+        <button id="fav-toggle" onclick="toggleFavouritesOnly()"
+          class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition">
+          ★ Saved (<span id="fav-count">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTER & SEARCH TOOLBAR -->
+    <div class="py-5 space-y-3">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input id="search-input" type="text" oninput="renderArticles()" placeholder="Search headlines, companies, or study notes..."
+          class="flex-1 bg-white border border-stone-300 rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+        <select id="source-filter" onchange="renderArticles()"
+          class="bg-white border border-stone-300 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-700 focus:outline-none">
+          <option value="ALL">All Newspapers</option>
+          <option value="Financial Times">Financial Times</option>
+          <option value="The Economist">The Economist</option>
+          <option value="The New York Times">The New York Times</option>
+        </select>
+      </div>
+
+      <!-- MBA CURRICULUM TAG PILLS -->
+      <div id="tag-pills" class="flex flex-wrap gap-2 pt-1"></div>
+    </div>
+
+    <!-- ARTICLES GRID -->
+    <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2"></div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty-state" class="hidden text-center py-16 bg-white border border-stone-200 rounded-2xl mt-4">
+      <h3 class="serif text-xl font-bold text-slate-900 mb-1">No articles found for this view</h3>
+      <p class="text-sm text-slate-500">Try selecting another edition date, clearing tag filters, or turning off "My Custom Feed".</p>
+    </div>
+  </main>
+
+  <!-- STUDENT PROFILE & PREFERENCES DRAWER -->
+  <div id="profile-drawer" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex justify-end">
+    <div class="bg-white w-full max-w-md h-full p-6 overflow-y-auto shadow-2xl flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between pb-4 border-b border-stone-200">
+          <h3 class="serif text-2xl font-bold text-slate-900">Student Profile</h3>
+          <button onclick="toggleProfileDrawer()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+        </div>
+
+        <div class="mt-5 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Cambridge Email</label>
+            <p id="profile-email" class="text-sm font-medium text-slate-900 bg-stone-100 px-3 py-2 rounded-lg"></p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Display Name</label>
+            <input id="profile-name-input" type="text"
+              class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">MBA Concentration / Stream</label>
+            <select id="profile-stream-input" class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm">
+              <option>MBA Core Cohort</option>
+              <option>Finance & Capital Markets</option>
+              <option>Strategy & Consulting</option>
+              <option>Digital Transformation & AI</option>
+              <option>Energy & Environment</option>
+              <option>Entrepreneurship</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+              Preferred MBA Topics (Powers "My Custom Feed")
+            </label>
+            <div id="profile-tags-checkboxes" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-stone-200 flex gap-3">
+        <button onclick="saveProfilePreferences()"
+          class="flex-1 cambridge-navy hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+          Save Preferences
+        </button>
+        <button onclick="toggleProfileDrawer()"
+          class="px-4 py-2.5 border border-stone-300 rounded-lg text-sm font-medium text-slate-700">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. CONFIGURATION: REPLACE WITH YOUR SUPABASE PROJECT URL & ANON KEY
+    // =========================================================================
+    const SUPABASE_URL = "https://zujqxanpxbtuyguxblwz.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_4momqp1DPSTMH0WdXjCNUQ_DEB_Jju0";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const ALL_TAGS = [
+      "Finance & Markets",
+      "Strategy & Macro",
+      "Tech & AI",
+      "Organisational Behaviour",
+      "Sustainability & ESG",
+      "Operations & Supply Chain"
+    ];
+
+    let currentUser = null;
+    let userProfile = { full_name: "CJBS Student", stream: "MBA Core Cohort", preferred_tags: [...ALL_TAGS] };
+    let articles = [];
+    let interactions = {}; // Map of article_id -> { is_favourite, personal_note }
+    let selectedTag = "ALL";
+    let onlyFavourites = false;
+    let onlyMyCustomFeed = false;
+
+    // =========================================================================
+    // 2. AUTHENTICATION FLOW
+    // =========================================================================
+    async function initApp() {
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("date-picker").value = today;
+
+      const { data: { session } } = await db.auth.getSession();
+      if (session) {
+        onSignedIn(session.user);
+      }
+
+      db.auth.onAuthStateChange((_event, session) => {
+        if (session) onSignedIn(session.user);
+        else onSignedOut();
+      });
+    }
+
+    async function handleMagicLinkLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById("login-email").value.trim().toLowerCase();
+      const feedback = document.getElementById("login-feedback");
+      const btn = document.getElementById("login-btn");
+
+      if (!email.endsWith("@cam.ac.uk") && !email.endsWith("@jbs.cam.ac.uk")) {
+        feedback.textContent = "Please use a valid @cam.ac.uk or @jbs.cam.ac.uk email address.";
+        feedback.className = "mt-4 text-xs text-center text-red-600 font-medium block";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Sending link...";
+      const { error } = await db.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin }
+      });
+
+      btn.disabled = false;
+      btn.textContent = "Send Cambridge SSO Magic Link";
+
+      if (error) {
+        feedback.textContent = error.message;
+        feedback.className = "mt-4 text-xs text-center text-red-600 block";
+      } else {
+        feedback.textContent = "Check your Cambridge inbox! Click the sign-in link we just sent you.";
+        feedback.className = "mt-4 text-xs text-center text-emerald-700 font-semibold block";
+      }
+    }
+
+    async function signOut() {
+      await db.auth.signOut();
+    }
+
+    async function onSignedIn(user) {
+      currentUser = user;
+      document.getElementById("auth-screen").classList.add("hidden");
+      document.getElementById("app-screen").classList.remove("hidden");
+      document.getElementById("user-nav").classList.remove("hidden");
+      document.getElementById("user-nav").classList.add("flex");
+
+      await loadProfileAndInteractions();
+      buildTagPills();
+      await loadArticlesForDate(document.getElementById("date-picker").value);
+    }
+
+    function onSignedOut() {
+      currentUser = null;
+      document.getElementById("auth-screen").classList.remove("hidden");
+      document.getElementById("app-screen").classList.add("hidden");
+      document.getElementById("user-nav").classList.add("hidden");
+    }
+
+    // =========================================================================
+    // 3. LOAD PROFILE, INTERACTIONS & DAILY ARTICLES
+    // =========================================================================
+    async function loadProfileAndInteractions() {
+      const { data: prof } = await db.from("profiles").select("*").eq("id", currentUser.id).single();
+      if (prof) userProfile = prof;
+
+      document.getElementById("nav-student-name").textContent = userProfile.full_name || currentUser.email;
+      document.getElementById("profile-email").textContent = currentUser.email;
+      document.getElementById("profile-name-input").value = userProfile.full_name || "";
+      document.getElementById("profile-stream-input").value = userProfile.stream || "MBA Core Cohort";
+
+      const { data: rows } = await db.from("user_article_interactions").select("*").eq("user_id", currentUser.id);
+      interactions = {};
+      (rows || []).forEach(r => {
+        interactions[r.article_id] = { is_favourite: r.is_favourite, personal_note: r.personal_note || "" };
+      });
+      updateFavCount();
+    }
+
+    async function loadArticlesForDate(dateStr) {
+      document.getElementById("edition-heading").textContent = `Edition: ${dateStr}`;
+      const { data, error } = await db
+        .from("articles")
+        .select("*")
+        .eq("publish_date", dateStr)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+      articles = data || [];
+      renderArticles();
+    }
+
+    // =========================================================================
+    // 4. FAVOURITES & PERSONAL STUDY NOTES (SYNCED TO SUPABASE)
+    // =========================================================================
+    async function toggleFavourite(articleId) {
+      const current = interactions[articleId] || { is_favourite: false, personal_note: "" };
+      const updatedFav = !current.is_favourite;
+      interactions[articleId] = { ...current, is_favourite: updatedFav };
+      updateFavCount();
+      renderArticles();
+
+      await db.from("user_article_interactions").upsert({
+        user_id: currentUser.id,
+        article_id: articleId,
+        is_favourite: updatedFav,
+        personal_note: current.personal_note,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id,article_id" });
+    }
+
+    async function saveStudyNote(articleId) {
+      const noteText = document.getElementById(`note-input-${articleId}`).value;
+      const current = interactions[articleId] || { is_favourite: false, personal_note: "" };
+      interactions[articleId] = { ...current, personal_note: noteText };
+
+      const statusEl = document.getElementById(`note-status-${articleId}`);
+      statusEl.textContent = "Saving...";
+
+      await db.from("user_article_interactions").upsert({
+        user_id: currentUser.id,
+        article_id: articleId,
+        is_favourite: current.is_favourite,
+        personal_note: noteText,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id,article_id" });
+
+      statusEl.textContent = "Saved to your CJBS notebook ✓";
+      setTimeout(() => { statusEl.textContent = ""; }, 2500);
+    }
+
+    function updateFavCount() {
+      const count = Object.values(interactions).filter(i => i.is_favourite).length;
+      document.getElementById("fav-count").textContent = count;
+    }
+
+    // =========================================================================
+    // 5. PROFILE DRAWER & CUSTOM FEED PREFERENCES
+    // =========================================================================
+    function toggleProfileDrawer() {
+      const drawer = document.getElementById("profile-drawer");
+      drawer.classList.toggle("hidden");
+      if (!drawer.classList.contains("hidden")) {
+        const container = document.getElementById("profile-tags-checkboxes");
+        container.innerHTML = ALL_TAGS.map(tag => {
+          const checked = (userProfile.preferred_tags || []).includes(tag) ? "checked" : "";
+          return `
+            <label class="flex items-center gap-2.5 p-2 rounded-lg border border-stone-200 hover:bg-stone-50 cursor-pointer text-sm">
+              <input type="checkbox" value="${tag}" ${checked} class="pref-tag-cb rounded text-slate-900" />
+              <span>${tag}</span>
+            </label>
+          `;
+        }).join("");
+      }
+    }
+
+    async function saveProfilePreferences() {
+      const fullName = document.getElementById("profile-name-input").value.trim();
+      const stream = document.getElementById("profile-stream-input").value;
+      const preferredTags = Array.from(document.querySelectorAll(".pref-tag-cb:checked")).map(cb => cb.value);
+
+      userProfile = { ...userProfile, full_name: fullName, stream, preferred_tags: preferredTags };
+      document.getElementById("nav-student-name").textContent = fullName || currentUser.email;
+
+      await db.from("profiles").update({
+        full_name: fullName,
+        stream,
+        preferred_tags: preferredTags,
+        updated_at: new Date().toISOString()
+      }).eq("id", currentUser.id);
+
+      toggleProfileDrawer();
+      renderArticles();
+    }
+
+    // =========================================================================
+    // 6. FILTERING & RENDERING UI
+    // =========================================================================
+    function buildTagPills() {
+      const container = document.getElementById("tag-pills");
+      const pills = ["ALL", ...ALL_TAGS];
+      container.innerHTML = pills.map(tag => {
+        const active = selectedTag === tag;
+        return `
+          <button onclick="selectTag('${tag}')"
+            class="px-3 py-1 rounded-full text-xs font-semibold transition ${
+              active ? "cambridge-navy text-white" : "bg-white text-slate-700 border border-stone-300 hover:bg-stone-100"
+            }">
+            ${tag === "ALL" ? "All MBA Topics" : tag}
+          </button>
+        `;
+      }).join("");
+    }
+
+    function selectTag(tag) {
+      selectedTag = tag;
+      buildTagPills();
+      renderArticles();
+    }
+
+    function toggleMyFeedMode() {
+      onlyMyCustomFeed = !onlyMyCustomFeed;
+      const btn = document.getElementById("my-feed-toggle");
+      btn.className = onlyMyCustomFeed
+        ? "px-3.5 py-2 rounded-lg text-xs font-semibold cambridge-navy text-white transition"
+        : "px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition";
+      renderArticles();
+    }
+
+    function toggleFavouritesOnly() {
+      onlyFavourites = !onlyFavourites;
+      const btn = document.getElementById("fav-toggle");
+      btn.className = onlyFavourites
+        ? "px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 transition"
+        : "px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition";
+      renderArticles();
+    }
+
+    function badgeClass(source) {
+      if (source.includes("Financial Times")) return "ft-badge";
+      if (source.includes("Economist")) return "econ-badge";
+      return "nyt-badge";
+    }
+
+    function renderArticles() {
+      const query = document.getElementById("search-input").value.toLowerCase();
+      const sourceFilter = document.getElementById("source-filter").value;
+
+      const filtered = articles.filter(art => {
+        const state = interactions[art.id] || { is_favourite: false, personal_note: "" };
+        if (onlyFavourites && !state.is_favourite) return false;
+        if (sourceFilter !== "ALL" && art.source !== sourceFilter) return false;
+        if (selectedTag !== "ALL" && !(art.tags || []).includes(selectedTag)) return false;
+        if (onlyMyCustomFeed) {
+          const prefs = userProfile.preferred_tags || [];
+          const matchesPref = (art.tags || []).some(t => prefs.includes(t));
+          if (!matchesPref) return false;
+        }
+        if (query) {
+          const hay = `${art.title} ${art.summary} ${art.mba_takeaway} ${state.personal_note}`.toLowerCase();
+          if (!hay.includes(query)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById("edition-count-badge").textContent = `${filtered.length} Briefings`;
+      const grid = document.getElementById("articles-grid");
+      const empty = document.getElementById("empty-state");
+
+      if (filtered.length === 0) {
+        grid.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+      }
+      empty.classList.add("hidden");
+
+      grid.innerHTML = filtered.map(art => {
+        const state = interactions[art.id] || { is_favourite: false, personal_note: "" };
+        const hasNote = state.personal_note.trim().length > 0;
+        return `
+          <article class="bg-white border border-stone-200 rounded-xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-md transition">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide ${badgeClass(art.source)}">
+                  ${art.source}
+                </span>
+                <button onclick="toggleFavourite('${art.id}')" title="Save to Favourites"
+                  class="text-lg leading-none ${state.is_favourite ? "text-amber-500" : "text-stone-300 hover:text-amber-400"}">
+                  ★
+                </button>
+              </div>
+
+              <h3 class="serif text-xl font-bold text-slate-900 leading-snug mb-2.5">
+                <a href="${art.url}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                  ${art.title}
+                </a>
+              </h3>
+
+              <p class="text-sm text-slate-600 leading-relaxed mb-3">${art.summary}</p>
+
+              <div class="bg-amber-50/70 border-l-2 border-amber-500 px-3 py-2 rounded-r text-xs text-slate-800 mb-4">
+                <strong class="text-amber-900">MBA Lens:</strong> ${art.mba_takeaway}
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-stone-100 space-y-3">
+              <div class="flex flex-wrap gap-1.5">
+                ${(art.tags || []).map(t => `<span class="px-2 py-0.5 bg-stone-100 text-slate-700 rounded text-[11px] font-medium">${t}</span>`).join("")}
+              </div>
+
+              <!-- EXPANDABLE STUDY NOTE -->
+              <details ${hasNote ? "open" : ""} class="group">
+                <summary class="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer select-none">
+                  ${hasNote ? "📝 Personal Study Note" : "+ Add Study Note"}
+                </summary>
+                <div class="mt-2 space-y-1.5">
+                  <textarea id="note-input-${art.id}" rows="2" placeholder="Jot down takeaways for class or syndicate discussion..."
+                    class="w-full text-xs border border-stone-300 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-slate-900">${state.personal_note}</textarea>
+                  <div class="flex items-center justify-between">
+                    <span id="note-status-${art.id}" class="text-[11px] text-emerald-700 font-medium"></span>
+                    <button onclick="saveStudyNote('${art.id}')"
+                      class="px-2.5 py-1 bg-slate-900 text-white rounded text-[11px] font-semibold hover:bg-slate-700">
+                      Save Note
+                    </button>
+                  </div>
+                </div>
+              </details>
+
+              <a href="${art.url}" target="_blank" rel="noopener noreferrer"
+                class="block w-full text-center py-2 rounded-lg border border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white text-xs font-semibold transition">
+                Read Full Pro Article via CJBS Access ↗
+              </a>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    initApp();
+  </script>
+</body>
+</html>

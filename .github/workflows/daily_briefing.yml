@@ -1,0 +1,28 @@
+name: Daily CJBS Newspaper Ingestion
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Runs daily at 06:00 UTC/GMT
+  workflow_dispatch:       # Allows manual "Run workflow" button in GitHub UI
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily newspaper curation
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/daily_ingest.py
