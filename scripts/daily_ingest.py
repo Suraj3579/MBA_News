@@ -44,7 +44,7 @@ def analyze_article(source: str, title: str, abstract: str) -> dict:
     3. "tags": A JSON array of 1 or 2 tags chosen ONLY from this exact list: {json.dumps(ALLOWED_TAGS)}.
     """
     response = gemini.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.8-flash",
         contents=prompt,
         config={"response_mime_type": "application/json"},
     )
