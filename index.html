@@ -259,7 +259,8 @@
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: true,
+        flowType: "pkce"
       }
     });
 
@@ -285,39 +286,55 @@
     let onlyMyCustomFeed = false;
 
     // =========================================================================
-    // 2. GOOGLE OAUTH AUTHENTICATION FLOW (LISTENER REGISTERED FIRST)
+    // 2. GOOGLE OAUTH AUTHENTICATION FLOW
     // =========================================================================
-    function initApp() {
+    async function initApp() {
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("date-picker").value = today;
 
-      // Register auth listener FIRST so OAuth ?code= redirect is always caught
+      // Surface any OAuth error returned in the URL query/hash
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const oauthError = params.get("error_description") || hashParams.get("error_description");
+      if (oauthError) {
+        showLoginError(decodeURIComponent(oauthError.replace(/\+/g, " ")));
+      }
+
+      // Listen for auth state changes
       db.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
-          // Clean ?code=... from URL bar after Google redirect
-          if (window.location.search.includes("code=")) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
           if (!currentUser || currentUser.id !== session.user.id) {
             await onSignedIn(session.user);
+          }
+          // Clean URL ONLY after session is confirmed and UI is unlocked
+          if (window.location.search.includes("code=") || window.location.hash.includes("access_token=")) {
+            window.history.replaceState({}, document.title, window.location.pathname);
           }
         } else if (event === "SIGNED_OUT") {
           onSignedOut();
         }
       });
 
-      // Also check existing session on normal page reload
-      db.auth.getSession().then(async ({ data: { session }, error }) => {
+      // Exchange PKCE code explicitly if present in URL, otherwise read existing session
+      if (params.has("code")) {
+        const { data, error } = await db.auth.exchangeCodeForSession(params.get("code"));
         if (error) {
-          const feedback = document.getElementById("login-feedback");
-          feedback.textContent = "Login error: " + error.message;
-          feedback.classList.remove("hidden");
-          return;
+          showLoginError("Auth exchange failed: " + error.message);
+        } else if (data?.session?.user && !currentUser) {
+          await onSignedIn(data.session.user);
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
-        if (session?.user && !currentUser) {
-          await onSignedIn(session.user);
-        }
-      });
+      } else {
+        const { data: { session }, error } = await db.auth.getSession();
+        if (error) showLoginError(error.message);
+        else if (session?.user && !currentUser) await onSignedIn(session.user);
+      }
+    }
+
+    function showLoginError(msg) {
+      const feedback = document.getElementById("login-feedback");
+      feedback.textContent = msg;
+      feedback.classList.remove("hidden");
     }
 
     async function handleGoogleLogin() {
@@ -325,18 +342,19 @@
       const btn = document.getElementById("google-login-btn");
       feedback.classList.add("hidden");
       btn.disabled = true;
+      btn.textContent = "Redirecting to Google...";
 
       const { error } = await db.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin + window.location.pathname
+          redirectTo: window.location.origin
         }
       });
 
       if (error) {
         btn.disabled = false;
-        feedback.textContent = error.message;
-        feedback.classList.remove("hidden");
+        btn.textContent = "Continue with Google";
+        showLoginError(error.message);
       }
     }
 
