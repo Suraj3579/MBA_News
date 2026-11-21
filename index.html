@@ -3,180 +3,233 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Judge Daily Briefing | CJBS MBA Intelligence</title>
+  <title>The Daily Brief — Global MBA Intelligence</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: #FAF9F6;
-      color: #1A1F2C;
+    :root {
+      --bg-canvas: #F8F7F4;
+      --ink-primary: #111827;
+      --ink-secondary: #4B5563;
+      --accent-gold: #B45309;
     }
-    .serif { font-family: 'Newsreader', serif; }
-    .cambridge-navy { background-color: #0F233C; }
-    .ft-badge { background-color: #FFF1E5; color: #990F3D; border: 1px solid #F2DFCE; }
-    .econ-badge { background-color: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
-    .nyt-badge { background-color: #F1F5F9; color: #0F172A; border: 1px solid #CBD5E1; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-canvas);
+      color: var(--ink-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+    .serif { font-family: 'Newsreader', Georgia, serif; }
+    .glass-header {
+      background: rgba(248, 247, 244, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .article-card {
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease;
+    }
+    .article-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px -8px rgba(17, 24, 39, 0.08);
+      border-color: #D6D3CD;
+    }
+    .badge-ft { background-color: #FDF2E9; color: #9A3412; border: 1px solid #F5D0B5; }
+    .badge-econ { background-color: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+    .badge-nyt { background-color: #F3F4F6; color: #1F2937; border: 1px solid #E5E7EB; }
+    @keyframes pulseSoft {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+    .skeleton { animation: pulseSoft 1.6s ease-in-out infinite; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col selection:bg-amber-200/60 selection:text-stone-900">
 
-  <!-- TOP INSTITUTIONAL BAR -->
-  <header class="cambridge-navy text-white border-b border-slate-800 sticky top-0 z-30">
+  <!-- FROSTED EDITORIAL HEADER -->
+  <header class="glass-header border-b border-stone-200/80 sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded bg-amber-400 text-slate-950 font-bold serif text-xl flex items-center justify-center shadow">
-          J
+      <div class="flex items-center gap-3.5">
+        <div class="w-9 h-9 rounded-xl bg-stone-900 text-amber-50 font-semibold serif text-xl flex items-center justify-center shadow-xs">
+          B
         </div>
         <div>
-          <h1 class="serif text-lg sm:text-xl font-bold tracking-tight leading-none">The Judge Daily Briefing</h1>
-          <p class="text-[11px] text-amber-300/90 tracking-wider uppercase mt-0.5">Cambridge Judge Business School • MBA Cohort</p>
+          <div class="flex items-center gap-2">
+            <h1 class="serif text-xl sm:text-2xl font-bold tracking-tight text-stone-900 leading-none">The Daily Brief</h1>
+            <span class="hidden sm:inline-block text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full bg-stone-200/70 text-stone-700">
+              MBA Edition
+            </span>
+          </div>
+          <p class="text-[11px] text-stone-500 tracking-wide mt-0.5">Executive News Synthesis &amp; Curriculum Intelligence</p>
         </div>
       </div>
 
       <!-- AUTHENTICATED NAV CONTROLS -->
-      <div id="user-nav" class="hidden items-center gap-3">
-        <button onclick="toggleProfileDrawer()" class="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <div id="user-nav" class="hidden items-center gap-2.5">
+        <button onclick="toggleProfileDrawer()"
+          class="flex items-center gap-2 bg-white hover:bg-stone-100 border border-stone-200/90 px-3.5 py-1.5 rounded-full text-xs font-medium text-stone-800 shadow-2xs transition">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span id="nav-student-name">Student Profile</span>
         </button>
-        <button onclick="signOut()" class="text-xs text-slate-300 hover:text-white px-2 py-1">Sign Out</button>
+        <button onclick="signOut()"
+          class="text-xs font-medium text-stone-500 hover:text-stone-900 px-2.5 py-1.5 rounded-full hover:bg-stone-200/50 transition">
+          Sign Out
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- LOGIN GATE (SHOWN WHEN LOGGED OUT) -->
+  <!-- LOGIN GATE -->
   <main id="auth-screen" class="flex-1 flex items-center justify-center p-6">
-    <div class="max-w-md w-full bg-white border border-stone-200 rounded-2xl shadow-sm p-8">
-      <div class="inline-block px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold mb-4">
-        CJBS Institutional Access
+    <div class="max-w-md w-full bg-white border border-stone-200/90 rounded-3xl shadow-sm p-8 sm:p-10">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200/70 text-xs font-semibold mb-5">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+        University &amp; Business School Access
       </div>
-      <h2 class="serif text-3xl font-bold text-slate-900 mb-2">Morning Executive Digest</h2>
-      <p class="text-sm text-slate-600 mb-6 leading-relaxed">
-        Curated daily summaries from the <em>Financial Times</em>, <em>The Economist</em>, and <em>The New York Times</em>—tagged to your MBA curriculum with personal study notes.
+      <h2 class="serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-3">
+        Your Morning Market Briefing.
+      </h2>
+      <p class="text-sm text-stone-600 mb-7 leading-relaxed">
+        Distilled daily executive summaries from the <em>Financial Times</em>, <em>The Economist</em>, and <em>The New York Times</em>—mapped to MBA frameworks with personal study notes.
       </p>
 
       <form onsubmit="handleMagicLinkLogin(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-            University Email (@cam.ac.uk or @jbs.cam.ac.uk)
+          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+            University or Personal Email
           </label>
-          <input id="login-email" type="email" required placeholder="crsid@cam.ac.uk"
-            class="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+          <input id="login-email" type="email" required placeholder="you@university.edu"
+            class="w-full px-4 py-3 rounded-xl bg-stone-50/70 border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/15 focus:border-stone-900 transition" />
         </div>
         <button id="login-btn" type="submit"
-          class="w-full cambridge-navy hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-sm">
-          Send Cambridge SSO Magic Link
+          class="w-full bg-stone-900 hover:bg-stone-800 text-white font-semibold py-3 rounded-xl text-sm transition shadow-xs cursor-pointer">
+          Continue with Magic Link
         </button>
       </form>
-      <p id="login-feedback" class="mt-4 text-xs text-center text-slate-600 hidden"></p>
-      <div class="mt-6 pt-5 border-t border-stone-100 text-[11px] text-slate-500 leading-relaxed">
-        <strong>Pro Subscription Access:</strong> Full article links open directly via your active Cambridge University / CJBS institutional credentials.
+      <p id="login-feedback" class="mt-4 text-xs text-center text-stone-600 hidden"></p>
+      <div class="mt-7 pt-5 border-t border-stone-100 text-xs text-stone-500 leading-relaxed">
+        Full article links open directly on each publisher's platform via your university library or institutional subscription.
       </div>
     </div>
   </main>
 
-  <!-- MAIN BRIEFING DASHBOARD (SHOWN WHEN LOGGED IN) -->
-  <main id="app-screen" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- MAIN BRIEFING DASHBOARD -->
+  <main id="app-screen" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
-    <!-- EDITION DATE & PERSONALIZATION BAR -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-stone-200">
+    <!-- MASTHEAD & EDITION CONTROLS -->
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5 pb-7 border-b border-stone-200">
       <div>
-        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-800 mb-1">
-          <span>Daily Edition</span>
-          <span>•</span>
-          <span id="edition-count-badge">Loading articles...</span>
+        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-amber-800 mb-1.5">
+          <span>Daily Digest</span>
+          <span class="text-stone-300">•</span>
+          <span id="edition-count-badge" class="text-stone-600">Loading edition...</span>
         </div>
-        <h2 id="edition-heading" class="serif text-3xl sm:text-4xl font-bold text-slate-900">Today's Briefing</h2>
+        <h2 id="edition-heading" class="serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight">
+          Today's Briefing
+        </h2>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2.5">
         <!-- Date Selector -->
-        <div class="flex items-center gap-2 bg-white border border-stone-300 rounded-lg px-3 py-1.5 shadow-2xs">
-          <label for="date-picker" class="text-xs font-semibold text-slate-500">Edition Date:</label>
+        <div class="flex items-center gap-2 bg-white border border-stone-200 rounded-full px-3.5 py-1.5 shadow-2xs">
+          <label for="date-picker" class="text-xs font-medium text-stone-500">Edition:</label>
           <input type="date" id="date-picker" onchange="loadArticlesForDate(this.value)"
-            class="text-xs font-semibold text-slate-900 focus:outline-none bg-transparent" />
+            class="text-xs font-semibold text-stone-900 focus:outline-none bg-transparent cursor-pointer" />
         </div>
 
         <!-- Custom Feed Toggle -->
         <button id="my-feed-toggle" onclick="toggleMyFeedMode()"
-          class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition">
+          class="px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer">
           My Custom Feed
         </button>
 
         <!-- Favourites Toggle -->
         <button id="fav-toggle" onclick="toggleFavouritesOnly()"
-          class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition">
+          class="px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer">
           ★ Saved (<span id="fav-count">0</span>)
         </button>
       </div>
     </div>
 
-    <!-- FILTER & SEARCH TOOLBAR -->
-    <div class="py-5 space-y-3">
+    <!-- SEARCH & FILTER RIBBON -->
+    <div class="py-6 space-y-4">
       <div class="flex flex-col sm:flex-row gap-3">
-        <input id="search-input" type="text" oninput="renderArticles()" placeholder="Search headlines, companies, or study notes..."
-          class="flex-1 bg-white border border-stone-300 rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+        <div class="relative flex-1">
+          <input id="search-input" type="text" oninput="renderArticles()"
+            placeholder="Search headlines, companies, MBA frameworks, or your notes..."
+            class="w-full bg-white border border-stone-200 rounded-xl pl-4 pr-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-800 transition" />
+        </div>
         <select id="source-filter" onchange="renderArticles()"
-          class="bg-white border border-stone-300 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-700 focus:outline-none">
-          <option value="ALL">All Newspapers</option>
+          class="bg-white border border-stone-200 rounded-xl px-4 py-2.5 text-sm font-medium text-stone-700 focus:outline-none focus:border-stone-800 cursor-pointer">
+          <option value="ALL">All Publications</option>
           <option value="Financial Times">Financial Times</option>
           <option value="The Economist">The Economist</option>
           <option value="The New York Times">The New York Times</option>
         </select>
       </div>
 
-      <!-- MBA CURRICULUM TAG PILLS -->
-      <div id="tag-pills" class="flex flex-wrap gap-2 pt-1"></div>
+      <!-- MBA TOPIC TAG PILLS -->
+      <div id="tag-pills" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- LOADING SKELETON -->
+    <div id="loading-grid" class="hidden grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="bg-white border border-stone-200/70 rounded-2xl p-6 h-72 skeleton"></div>
+      <div class="bg-white border border-stone-200/70 rounded-2xl p-6 h-72 skeleton"></div>
+      <div class="bg-white border border-stone-200/70 rounded-2xl p-6 h-72 skeleton"></div>
     </div>
 
     <!-- ARTICLES GRID -->
-    <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2"></div>
+    <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
     <!-- EMPTY STATE -->
-    <div id="empty-state" class="hidden text-center py-16 bg-white border border-stone-200 rounded-2xl mt-4">
-      <h3 class="serif text-xl font-bold text-slate-900 mb-1">No articles found for this view</h3>
-      <p class="text-sm text-slate-500">Try selecting another edition date, clearing tag filters, or turning off "My Custom Feed".</p>
+    <div id="empty-state" class="hidden text-center py-20 bg-white border border-stone-200/80 rounded-3xl mt-2">
+      <p class="serif text-2xl font-semibold text-stone-900 mb-1.5">No briefings match this view</p>
+      <p class="text-sm text-stone-500 max-w-md mx-auto">
+        Try choosing another edition date above, clearing active topic filters, or toggling off "My Custom Feed".
+      </p>
     </div>
   </main>
 
   <!-- STUDENT PROFILE & PREFERENCES DRAWER -->
-  <div id="profile-drawer" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex justify-end">
-    <div class="bg-white w-full max-w-md h-full p-6 overflow-y-auto shadow-2xl flex flex-col justify-between">
+  <div id="profile-drawer" class="hidden fixed inset-0 z-50 bg-stone-950/40 backdrop-blur-xs flex justify-end transition-opacity">
+    <div class="bg-white w-full max-w-md h-full p-7 overflow-y-auto shadow-2xl flex flex-col justify-between border-l border-stone-200">
       <div>
-        <div class="flex items-center justify-between pb-4 border-b border-stone-200">
-          <h3 class="serif text-2xl font-bold text-slate-900">Student Profile</h3>
-          <button onclick="toggleProfileDrawer()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+        <div class="flex items-center justify-between pb-5 border-b border-stone-200">
+          <div>
+            <h3 class="serif text-2xl font-bold text-stone-900">Reader Profile</h3>
+            <p class="text-xs text-stone-500 mt-0.5">Customize your daily MBA feed</p>
+          </div>
+          <button onclick="toggleProfileDrawer()" class="w-8 h-8 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-900 text-xl flex items-center justify-center">&times;</button>
         </div>
 
-        <div class="mt-5 space-y-4">
+        <div class="mt-6 space-y-5">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Cambridge Email</label>
-            <p id="profile-email" class="text-sm font-medium text-slate-900 bg-stone-100 px-3 py-2 rounded-lg"></p>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">Account Email</label>
+            <p id="profile-email" class="text-sm font-medium text-stone-800 bg-stone-100/80 px-3.5 py-2.5 rounded-xl border border-stone-200/60"></p>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Display Name</label>
-            <input id="profile-name-input" type="text"
-              class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" />
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">Display Name</label>
+            <input id="profile-name-input" type="text" placeholder="Alex Rivera"
+              class="w-full border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-stone-900" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">MBA Concentration / Stream</label>
-            <select id="profile-stream-input" class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm">
-              <option>MBA Core Cohort</option>
-              <option>Finance & Capital Markets</option>
-              <option>Strategy & Consulting</option>
-              <option>Digital Transformation & AI</option>
-              <option>Energy & Environment</option>
-              <option>Entrepreneurship</option>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">MBA Concentration / Track</label>
+            <select id="profile-stream-input" class="w-full border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-stone-900">
+              <option>General Management / Core MBA</option>
+              <option>Finance &amp; Capital Markets</option>
+              <option>Strategy &amp; Management Consulting</option>
+              <option>Technology, Product &amp; AI</option>
+              <option>Sustainability &amp; Energy Transition</option>
+              <option>Entrepreneurship &amp; Venture Capital</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
-              Preferred MBA Topics (Powers "My Custom Feed")
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-2">
+              Preferred Topics (Powers "My Custom Feed")
             </label>
             <div id="profile-tags-checkboxes" class="space-y-2"></div>
           </div>
@@ -185,11 +238,11 @@
 
       <div class="pt-6 border-t border-stone-200 flex gap-3">
         <button onclick="saveProfilePreferences()"
-          class="flex-1 cambridge-navy hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+          class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-semibold py-2.5 rounded-xl text-sm transition cursor-pointer">
           Save Preferences
         </button>
         <button onclick="toggleProfileDrawer()"
-          class="px-4 py-2.5 border border-stone-300 rounded-lg text-sm font-medium text-slate-700">
+          class="px-4 py-2.5 border border-stone-200 hover:bg-stone-50 rounded-xl text-sm font-medium text-stone-700 cursor-pointer">
           Cancel
         </button>
       </div>
@@ -214,9 +267,9 @@
     ];
 
     let currentUser = null;
-    let userProfile = { full_name: "CJBS Student", stream: "MBA Core Cohort", preferred_tags: [...ALL_TAGS] };
+    let userProfile = { full_name: "MBA Reader", stream: "General Management / Core MBA", preferred_tags: [...ALL_TAGS] };
     let articles = [];
-    let interactions = {}; // Map of article_id -> { is_favourite, personal_note }
+    let interactions = {};
     let selectedTag = "ALL";
     let onlyFavourites = false;
     let onlyMyCustomFeed = false;
@@ -229,9 +282,7 @@
       document.getElementById("date-picker").value = today;
 
       const { data: { session } } = await db.auth.getSession();
-      if (session) {
-        onSignedIn(session.user);
-      }
+      if (session) onSignedIn(session.user);
 
       db.auth.onAuthStateChange((_event, session) => {
         if (session) onSignedIn(session.user);
@@ -245,27 +296,21 @@
       const feedback = document.getElementById("login-feedback");
       const btn = document.getElementById("login-btn");
 
-      if (!email.endsWith("@cam.ac.uk") && !email.endsWith("@jbs.cam.ac.uk")) {
-        feedback.textContent = "Please use a valid @cam.ac.uk or @jbs.cam.ac.uk email address.";
-        feedback.className = "mt-4 text-xs text-center text-red-600 font-medium block";
-        return;
-      }
-
       btn.disabled = true;
-      btn.textContent = "Sending link...";
+      btn.textContent = "Sending sign-in link...";
       const { error } = await db.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: window.location.origin }
       });
 
       btn.disabled = false;
-      btn.textContent = "Send Cambridge SSO Magic Link";
+      btn.textContent = "Continue with Magic Link";
 
       if (error) {
         feedback.textContent = error.message;
         feedback.className = "mt-4 text-xs text-center text-red-600 block";
       } else {
-        feedback.textContent = "Check your Cambridge inbox! Click the sign-in link we just sent you.";
+        feedback.textContent = "Magic link sent! Check your inbox and click the link to open The Daily Brief.";
         feedback.className = "mt-4 text-xs text-center text-emerald-700 font-semibold block";
       }
     }
@@ -300,10 +345,10 @@
       const { data: prof } = await db.from("profiles").select("*").eq("id", currentUser.id).single();
       if (prof) userProfile = prof;
 
-      document.getElementById("nav-student-name").textContent = userProfile.full_name || currentUser.email;
+      document.getElementById("nav-student-name").textContent = userProfile.full_name || currentUser.email.split("@")[0];
       document.getElementById("profile-email").textContent = currentUser.email;
       document.getElementById("profile-name-input").value = userProfile.full_name || "";
-      document.getElementById("profile-stream-input").value = userProfile.stream || "MBA Core Cohort";
+      document.getElementById("profile-stream-input").value = userProfile.stream || "General Management / Core MBA";
 
       const { data: rows } = await db.from("user_article_interactions").select("*").eq("user_id", currentUser.id);
       interactions = {};
@@ -314,12 +359,25 @@
     }
 
     async function loadArticlesForDate(dateStr) {
-      document.getElementById("edition-heading").textContent = `Edition: ${dateStr}`;
+      const formatted = new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+        weekday: "long", month: "long", day: "numeric", year: "numeric"
+      });
+      document.getElementById("edition-heading").textContent = formatted;
+
+      const loader = document.getElementById("loading-grid");
+      const grid = document.getElementById("articles-grid");
+      loader.classList.remove("hidden");
+      loader.classList.add("grid");
+      grid.innerHTML = "";
+
       const { data, error } = await db
         .from("articles")
         .select("*")
         .eq("publish_date", dateStr)
         .order("created_at", { ascending: false });
+
+      loader.classList.add("hidden");
+      loader.classList.remove("grid");
 
       if (error) {
         console.error(error);
@@ -330,7 +388,7 @@
     }
 
     // =========================================================================
-    // 4. FAVOURITES & PERSONAL STUDY NOTES (SYNCED TO SUPABASE)
+    // 4. FAVOURITES & PERSONAL STUDY NOTES
     // =========================================================================
     async function toggleFavourite(articleId) {
       const current = interactions[articleId] || { is_favourite: false, personal_note: "" };
@@ -364,7 +422,7 @@
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,article_id" });
 
-      statusEl.textContent = "Saved to your CJBS notebook ✓";
+      statusEl.textContent = "Saved to notebook ✓";
       setTimeout(() => { statusEl.textContent = ""; }, 2500);
     }
 
@@ -374,7 +432,7 @@
     }
 
     // =========================================================================
-    // 5. PROFILE DRAWER & CUSTOM FEED PREFERENCES
+    // 5. PROFILE DRAWER & CUSTOM FEED
     // =========================================================================
     function toggleProfileDrawer() {
       const drawer = document.getElementById("profile-drawer");
@@ -384,9 +442,9 @@
         container.innerHTML = ALL_TAGS.map(tag => {
           const checked = (userProfile.preferred_tags || []).includes(tag) ? "checked" : "";
           return `
-            <label class="flex items-center gap-2.5 p-2 rounded-lg border border-stone-200 hover:bg-stone-50 cursor-pointer text-sm">
-              <input type="checkbox" value="${tag}" ${checked} class="pref-tag-cb rounded text-slate-900" />
-              <span>${tag}</span>
+            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 cursor-pointer text-sm">
+              <input type="checkbox" value="${tag}" ${checked} class="pref-tag-cb rounded text-stone-900" />
+              <span class="font-medium text-stone-800">${tag}</span>
             </label>
           `;
         }).join("");
@@ -399,7 +457,7 @@
       const preferredTags = Array.from(document.querySelectorAll(".pref-tag-cb:checked")).map(cb => cb.value);
 
       userProfile = { ...userProfile, full_name: fullName, stream, preferred_tags: preferredTags };
-      document.getElementById("nav-student-name").textContent = fullName || currentUser.email;
+      document.getElementById("nav-student-name").textContent = fullName || currentUser.email.split("@")[0];
 
       await db.from("profiles").update({
         full_name: fullName,
@@ -422,10 +480,12 @@
         const active = selectedTag === tag;
         return `
           <button onclick="selectTag('${tag}')"
-            class="px-3 py-1 rounded-full text-xs font-semibold transition ${
-              active ? "cambridge-navy text-white" : "bg-white text-slate-700 border border-stone-300 hover:bg-stone-100"
+            class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+              active
+                ? "bg-stone-900 text-white shadow-2xs"
+                : "bg-white text-stone-600 border border-stone-200 hover:border-stone-300 hover:text-stone-900"
             }">
-            ${tag === "ALL" ? "All MBA Topics" : tag}
+            ${tag === "ALL" ? "All Topics" : tag}
           </button>
         `;
       }).join("");
@@ -441,8 +501,8 @@
       onlyMyCustomFeed = !onlyMyCustomFeed;
       const btn = document.getElementById("my-feed-toggle");
       btn.className = onlyMyCustomFeed
-        ? "px-3.5 py-2 rounded-lg text-xs font-semibold cambridge-navy text-white transition"
-        : "px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition";
+        ? "px-4 py-2 rounded-full text-xs font-semibold bg-stone-900 text-white transition cursor-pointer"
+        : "px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer";
       renderArticles();
     }
 
@@ -450,15 +510,15 @@
       onlyFavourites = !onlyFavourites;
       const btn = document.getElementById("fav-toggle");
       btn.className = onlyFavourites
-        ? "px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 transition"
-        : "px-3.5 py-2 rounded-lg text-xs font-semibold border border-stone-300 bg-white text-slate-700 hover:bg-stone-50 transition";
+        ? "px-4 py-2 rounded-full text-xs font-semibold bg-amber-500 text-stone-950 transition cursor-pointer"
+        : "px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer";
       renderArticles();
     }
 
     function badgeClass(source) {
-      if (source.includes("Financial Times")) return "ft-badge";
-      if (source.includes("Economist")) return "econ-badge";
-      return "nyt-badge";
+      if (source.includes("Financial Times")) return "badge-ft";
+      if (source.includes("Economist")) return "badge-econ";
+      return "badge-nyt";
     }
 
     function renderArticles() {
@@ -497,48 +557,48 @@
         const state = interactions[art.id] || { is_favourite: false, personal_note: "" };
         const hasNote = state.personal_note.trim().length > 0;
         return `
-          <article class="bg-white border border-stone-200 rounded-xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-md transition">
+          <article class="article-card bg-white border border-stone-200/90 rounded-2xl p-6 flex flex-col justify-between">
             <div>
-              <div class="flex items-center justify-between gap-2 mb-3">
-                <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide ${badgeClass(art.source)}">
+              <div class="flex items-center justify-between gap-2 mb-3.5">
+                <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass(art.source)}">
                   ${art.source}
                 </span>
                 <button onclick="toggleFavourite('${art.id}')" title="Save to Favourites"
-                  class="text-lg leading-none ${state.is_favourite ? "text-amber-500" : "text-stone-300 hover:text-amber-400"}">
+                  class="text-lg leading-none transition cursor-pointer ${state.is_favourite ? "text-amber-500 scale-110" : "text-stone-300 hover:text-amber-400"}">
                   ★
                 </button>
               </div>
 
-              <h3 class="serif text-xl font-bold text-slate-900 leading-snug mb-2.5">
-                <a href="${art.url}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+              <h3 class="serif text-xl font-bold text-stone-900 leading-snug mb-3">
+                <a href="${art.url}" target="_blank" rel="noopener noreferrer" class="hover:text-amber-900 transition">
                   ${art.title}
                 </a>
               </h3>
 
-              <p class="text-sm text-slate-600 leading-relaxed mb-3">${art.summary}</p>
+              <p class="text-sm text-stone-600 leading-relaxed mb-4">${art.summary}</p>
 
-              <div class="bg-amber-50/70 border-l-2 border-amber-500 px-3 py-2 rounded-r text-xs text-slate-800 mb-4">
-                <strong class="text-amber-900">MBA Lens:</strong> ${art.mba_takeaway}
+              <div class="bg-stone-50 border-l-2 border-amber-600 px-3.5 py-2.5 rounded-r-xl text-xs text-stone-700 leading-relaxed mb-4">
+                <span class="font-bold text-stone-900">MBA Lens:</span> ${art.mba_takeaway}
               </div>
             </div>
 
-            <div class="pt-3 border-t border-stone-100 space-y-3">
+            <div class="pt-3.5 border-t border-stone-100 space-y-3">
               <div class="flex flex-wrap gap-1.5">
-                ${(art.tags || []).map(t => `<span class="px-2 py-0.5 bg-stone-100 text-slate-700 rounded text-[11px] font-medium">${t}</span>`).join("")}
+                ${(art.tags || []).map(t => `<span class="px-2.5 py-0.5 bg-stone-100 text-stone-700 rounded-md text-[11px] font-medium">${t}</span>`).join("")}
               </div>
 
-              <!-- EXPANDABLE STUDY NOTE -->
-              <details ${hasNote ? "open" : ""} class="group">
-                <summary class="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer select-none">
-                  ${hasNote ? "📝 Personal Study Note" : "+ Add Study Note"}
+              <!-- PERSONAL STUDY NOTE -->
+              <details ${hasNote ? "open" : ""}>
+                <summary class="text-xs font-semibold text-stone-500 hover:text-stone-900 cursor-pointer select-none transition">
+                  ${hasNote ? "📝 Study Note" : "+ Add Study Note"}
                 </summary>
-                <div class="mt-2 space-y-1.5">
-                  <textarea id="note-input-${art.id}" rows="2" placeholder="Jot down takeaways for class or syndicate discussion..."
-                    class="w-full text-xs border border-stone-300 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-slate-900">${state.personal_note}</textarea>
+                <div class="mt-2.5 space-y-2">
+                  <textarea id="note-input-${art.id}" rows="2" placeholder="Jot down takeaways for class or study group..."
+                    class="w-full text-xs bg-stone-50 border border-stone-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:border-stone-800 transition">${state.personal_note}</textarea>
                   <div class="flex items-center justify-between">
                     <span id="note-status-${art.id}" class="text-[11px] text-emerald-700 font-medium"></span>
                     <button onclick="saveStudyNote('${art.id}')"
-                      class="px-2.5 py-1 bg-slate-900 text-white rounded text-[11px] font-semibold hover:bg-slate-700">
+                      class="px-3 py-1 bg-stone-900 text-white rounded-lg text-[11px] font-semibold hover:bg-stone-700 transition cursor-pointer">
                       Save Note
                     </button>
                   </div>
@@ -546,8 +606,8 @@
               </details>
 
               <a href="${art.url}" target="_blank" rel="noopener noreferrer"
-                class="block w-full text-center py-2 rounded-lg border border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white text-xs font-semibold transition">
-                Read Full Pro Article via CJBS Access ↗
+                class="block w-full text-center py-2.5 rounded-xl bg-stone-900/5 hover:bg-stone-900 text-stone-900 hover:text-white text-xs font-semibold transition">
+                Read Full Article ↗
               </a>
             </div>
           </article>
