@@ -252,9 +252,16 @@
     // =========================================================================
     // 1. CONFIGURATION: REPLACE WITH YOUR SUPABASE PROJECT URL & ANON KEY
     // =========================================================================
-    const SUPABASE_URL = "https://zujqxanpxbtuyguxblwz.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_4momqp1DPSTMH0WdXjCNUQ_DEB_Jju0";
-    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_PUBLIC_KEY";
+
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
 
     const ALL_TAGS = [
       "Finance & Markets",
@@ -278,18 +285,38 @@
     let onlyMyCustomFeed = false;
 
     // =========================================================================
-    // 2. GOOGLE OAUTH AUTHENTICATION FLOW
+    // 2. GOOGLE OAUTH AUTHENTICATION FLOW (LISTENER REGISTERED FIRST)
     // =========================================================================
-    async function initApp() {
+    function initApp() {
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("date-picker").value = today;
 
-      const { data: { session } } = await db.auth.getSession();
-      if (session) onSignedIn(session.user);
+      // Register auth listener FIRST so OAuth ?code= redirect is always caught
+      db.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          // Clean ?code=... from URL bar after Google redirect
+          if (window.location.search.includes("code=")) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          if (!currentUser || currentUser.id !== session.user.id) {
+            await onSignedIn(session.user);
+          }
+        } else if (event === "SIGNED_OUT") {
+          onSignedOut();
+        }
+      });
 
-      db.auth.onAuthStateChange((_event, session) => {
-        if (session) onSignedIn(session.user);
-        else onSignedOut();
+      // Also check existing session on normal page reload
+      db.auth.getSession().then(async ({ data: { session }, error }) => {
+        if (error) {
+          const feedback = document.getElementById("login-feedback");
+          feedback.textContent = "Login error: " + error.message;
+          feedback.classList.remove("hidden");
+          return;
+        }
+        if (session?.user && !currentUser) {
+          await onSignedIn(session.user);
+        }
       });
     }
 
@@ -301,7 +328,9 @@
 
       const { error } = await db.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin }
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
+        }
       });
 
       if (error) {
@@ -312,7 +341,9 @@
     }
 
     async function signOut() {
+      currentUser = null;
       await db.auth.signOut();
+      onSignedOut();
     }
 
     async function onSignedIn(user) {
@@ -338,15 +369,11 @@
     // 3. LOAD PROFILE, INTERACTIONS & DAILY ARTICLES
     // =========================================================================
     async function loadProfileAndInteractions() {
-      const { data: prof } = await db.from("profiles").select("*").eq("id", currentUser.id).single();
       const googleDisplayName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name;
+      const { data: prof } = await db.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
 
       if (prof) {
         userProfile = prof;
-        if (googleDisplayName && prof.full_name === currentUser.email.split("@")[0]) {
-          userProfile.full_name = googleDisplayName;
-          await db.from("profiles").update({ full_name: googleDisplayName }).eq("id", currentUser.id);
-        }
       } else {
         userProfile = {
           id: currentUser.id,
@@ -355,7 +382,8 @@
           stream: "General Management / Core MBA",
           preferred_tags: [...ALL_TAGS]
         };
-        await db.from("profiles").upsert(userProfile);
+        const { error: upsertErr } = await db.from("profiles").upsert(userProfile, { onConflict: "id" });
+        if (upsertErr) console.error("Profile upsert error:", upsertErr);
       }
 
       document.getElementById("nav-student-name").textContent = userProfile.full_name || currentUser.email.split("@")[0];
@@ -393,7 +421,7 @@
       loader.classList.remove("grid");
 
       if (error) {
-        console.error(error);
+        console.error("Articles load error:", error);
         return;
       }
       articles = data || [];
@@ -410,13 +438,15 @@
       updateFavCount();
       renderArticles();
 
-      await db.from("user_article_interactions").upsert({
+      const { error } = await db.from("user_article_interactions").upsert({
         user_id: currentUser.id,
         article_id: articleId,
         is_favourite: updatedFav,
         personal_note: current.personal_note,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,article_id" });
+
+      if (error) console.error("Favourite save error:", error);
     }
 
     async function saveStudyNote(articleId) {
@@ -427,7 +457,7 @@
       const statusEl = document.getElementById(`note-status-${articleId}`);
       statusEl.textContent = "Saving...";
 
-      await db.from("user_article_interactions").upsert({
+      const { error } = await db.from("user_article_interactions").upsert({
         user_id: currentUser.id,
         article_id: articleId,
         is_favourite: current.is_favourite,
@@ -435,6 +465,10 @@
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,article_id" });
 
+      if (error) {
+        statusEl.textContent = "Error: " + error.message;
+        return;
+      }
       statusEl.textContent = "Saved to notebook ✓";
       setTimeout(() => { statusEl.textContent = ""; }, 2500);
     }
@@ -445,7 +479,7 @@
     }
 
     // =========================================================================
-    // 5. PROFILE DRAWER & CUSTOM FEED
+    // 5. PROFILE DRAWER & CUSTOM FEED (USES UPSERT SO IT ALWAYS PERSISTS)
     // =========================================================================
     function toggleProfileDrawer() {
       const drawer = document.getElementById("profile-drawer");
@@ -469,16 +503,23 @@
       const stream = document.getElementById("profile-stream-input").value;
       const preferredTags = Array.from(document.querySelectorAll(".pref-tag-cb:checked")).map(cb => cb.value);
 
-      userProfile = { ...userProfile, full_name: fullName, stream, preferred_tags: preferredTags };
-      document.getElementById("nav-student-name").textContent = fullName || currentUser.email.split("@")[0];
-
-      await db.from("profiles").update({
-        full_name: fullName,
+      const updatedProfile = {
+        id: currentUser.id,
+        email: currentUser.email,
+        full_name: fullName || currentUser.email.split("@")[0],
         stream,
         preferred_tags: preferredTags,
         updated_at: new Date().toISOString()
-      }).eq("id", currentUser.id);
+      };
 
+      const { error } = await db.from("profiles").upsert(updatedProfile, { onConflict: "id" });
+      if (error) {
+        alert("Could not save profile: " + error.message);
+        return;
+      }
+
+      userProfile = updatedProfile;
+      document.getElementById("nav-student-name").textContent = userProfile.full_name;
       toggleProfileDrawer();
       renderArticles();
     }
