@@ -260,7 +260,7 @@
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: "pkce"
+        flowType: "implicit"
       }
     });
 
@@ -292,7 +292,7 @@
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("date-picker").value = today;
 
-      // Surface any OAuth error returned in the URL query/hash
+      // Surface any real OAuth error returned in the URL
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const oauthError = params.get("error_description") || hashParams.get("error_description");
@@ -300,13 +300,13 @@
         showLoginError(decodeURIComponent(oauthError.replace(/\+/g, " ")));
       }
 
-      // Listen for auth state changes
+      // Listen for sign-in and sign-out events
       db.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
+          document.getElementById("login-feedback").classList.add("hidden");
           if (!currentUser || currentUser.id !== session.user.id) {
             await onSignedIn(session.user);
           }
-          // Clean URL ONLY after session is confirmed and UI is unlocked
           if (window.location.search.includes("code=") || window.location.hash.includes("access_token=")) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
@@ -315,19 +315,10 @@
         }
       });
 
-      // Exchange PKCE code explicitly if present in URL, otherwise read existing session
-      if (params.has("code")) {
-        const { data, error } = await db.auth.exchangeCodeForSession(params.get("code"));
-        if (error) {
-          showLoginError("Auth exchange failed: " + error.message);
-        } else if (data?.session?.user && !currentUser) {
-          await onSignedIn(data.session.user);
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      } else {
-        const { data: { session }, error } = await db.auth.getSession();
-        if (error) showLoginError(error.message);
-        else if (session?.user && !currentUser) await onSignedIn(session.user);
+      // Check existing session on load
+      const { data: { session } } = await db.auth.getSession();
+      if (session?.user && !currentUser) {
+        await onSignedIn(session.user);
       }
     }
 
