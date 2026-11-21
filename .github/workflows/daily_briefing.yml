@@ -1,13 +1,14 @@
-name: Daily CJBS Newspaper Ingestion
+name: Daily Newspaper Ingestion
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # Runs daily at 06:00 UTC/GMT
-  workflow_dispatch:       # Allows manual "Run workflow" button in GitHub UI
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,4 +26,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/daily_ingest.py
+        run: python -u scripts/daily_ingest.py

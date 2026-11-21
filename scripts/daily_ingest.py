@@ -1,10 +1,15 @@
 import os
 import json
 import time
+import socket
+import urllib.request
 import feedparser
 from datetime import date
 from google import genai
 from supabase import create_client
+
+# Hard 15-second timeout on all network calls so feedparser NEVER hangs for 6 hours
+socket.setdefaulttimeout(15)
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].strip()
 SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"].strip()
@@ -13,7 +18,13 @@ GEMINI_API_KEY = os.environ["GEMINI_API_KEY"].strip()
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 gemini = genai.Client(api_key=GEMINI_API_KEY)
 
-# Active 2026 RSS feeds across FT, The Economist, and The New York Times
+MODEL_FALLBACK_CHAIN = [
+    "gemini-3.8-flash",
+    "gemini-3.8-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-pro",
+]
+
 RSS_FEEDS = [
     ("Financial Times", "https://www.ft.com/?format=rss"),
     ("Financial Times", "https://www.ft.com/markets?format=rss"),
@@ -35,6 +46,40 @@ ALLOWED_TAGS = [
     "Operations & Supply Chain",
 ]
 
+def fetch_feed_safely(feed_url: str):
+    """Fetch RSS XML with an explicit 15s timeout and User-Agent before parsing."""
+    req = urllib.request.Request(
+        feed_url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; TheDailyBriefBot/1.0)"},
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        xml_bytes = resp.read()
+    return feedparser.parse(xml_bytes)
+
+def generate_with_fallback(prompt: str) -> str:
+    last_error = None
+    for attempt in range(2):
+        for model_name in MODEL_FALLBACK_CHAIN:
+            try:
+                response = gemini.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config={"response_mime_type": "application/json"},
+                )
+                return response.text
+            except Exception as err:
+                last_error = err
+                err_str = str(err)
+                if "503" in err_str or "429" in err_str or "UNAVAILABLE" in err_str:
+                    print(f"    [Fallback] {model_name} busy, switching model...", flush=True)
+                    time.sleep(1.5)
+                    continue
+                if "404" in err_str or "NOT_FOUND" in err_str:
+                    continue
+                raise err
+        time.sleep(5)
+    raise last_error
+
 def analyze_article(source: str, title: str, abstract: str) -> dict:
     prompt = f"""
     You are an executive briefing editor for MBA students across global business schools.
@@ -47,12 +92,8 @@ def analyze_article(source: str, title: str, abstract: str) -> dict:
     2. "mba_takeaway": One sharp sentence linking this event to an MBA framework (e.g., capital allocation, Porter's Five Forces, corporate governance, organizational incentives, supply chain resilience).
     3. "tags": A JSON array of 1 or 2 tags chosen ONLY from this exact list: {json.dumps(ALLOWED_TAGS)}.
     """
-    response = gemini.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config={"response_mime_type": "application/json"},
-    )
-    data = json.loads(response.text)
+    raw_json = generate_with_fallback(prompt)
+    data = json.loads(raw_json)
     valid_tags = [t for t in data.get("tags", []) if t in ALLOWED_TAGS]
     if not valid_tags:
         valid_tags = ["Strategy & Macro"]
@@ -64,16 +105,20 @@ def analyze_article(source: str, title: str, abstract: str) -> dict:
 
 def main():
     today_str = date.today().isoformat()
-    print(f"Starting The Daily Brief ingestion for {today_str}...")
+    print(f"Starting The Daily Brief ingestion for {today_str}...", flush=True)
     processed_urls = set()
     saved_count = 0
 
     for source, feed_url in RSS_FEEDS:
-        print(f"Fetching RSS: {source} ({feed_url})")
-        feed = feedparser.parse(feed_url)
-        print(f"  -> Found {len(feed.entries)} entries in feed")
+        print(f"Fetching RSS: {source} ({feed_url})", flush=True)
+        try:
+            feed = fetch_feed_safely(feed_url)
+        except Exception as feed_err:
+            print(f"  [Feed Timeout/Error] Skipping {feed_url} -> {feed_err}", flush=True)
+            continue
 
-        # Pull top 5 entries per feed (9 feeds x 5 = up to 45 articles/day)
+        print(f"  -> Found {len(feed.entries)} entries in feed", flush=True)
+
         for entry in feed.entries[:5]:
             url = getattr(entry, "link", "").strip()
             title = getattr(entry, "title", "").strip()
@@ -85,7 +130,7 @@ def main():
 
             existing = supabase.table("articles").select("id").eq("url", url).execute()
             if existing.data:
-                print(f"  [Skip - Exists] {title[:55]}")
+                print(f"  [Skip - Exists] {title[:55]}", flush=True)
                 continue
 
             try:
@@ -100,13 +145,13 @@ def main():
                     "tags": enriched["tags"],
                 }).execute()
                 saved_count += 1
-                print(f"  [Saved #{saved_count}] {source}: {title[:55]}")
-                time.sleep(4.5)  # Stays safely under Gemini free-tier RPM limits
+                print(f"  [Saved #{saved_count}] {source}: {title[:55]}", flush=True)
+                time.sleep(3.5)
             except Exception as err:
-                print(f"  [Error] {title[:40]} -> {err}")
-                time.sleep(5)
+                print(f"  [Error] {title[:40]} -> {err}", flush=True)
+                time.sleep(4)
 
-    print(f"Ingestion complete. Total new articles saved today: {saved_count}")
+    print(f"Ingestion complete. Total new articles saved today: {saved_count}", flush=True)
 
 if __name__ == "__main__":
     main()
