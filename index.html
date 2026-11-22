@@ -441,6 +441,7 @@
     // 4. FAVOURITES & PERSONAL STUDY NOTES
     // =========================================================================
     async function toggleFavourite(articleId) {
+      if (!currentUser) return;
       const current = interactions[articleId] || { is_favourite: false, personal_note: "" };
       const updatedFav = !current.is_favourite;
       interactions[articleId] = { ...current, is_favourite: updatedFav };
@@ -451,41 +452,47 @@
         user_id: currentUser.id,
         article_id: articleId,
         is_favourite: updatedFav,
-        personal_note: current.personal_note,
+        personal_note: current.personal_note || "",
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,article_id" });
 
-      if (error) console.error("Favourite save error:", error);
+      if (error) {
+        alert("Could not save favourite: " + error.message);
+      }
     }
 
     async function saveStudyNote(articleId) {
-      const noteText = document.getElementById(`note-input-${articleId}`).value;
+      if (!currentUser) return;
+      const inputEl = document.getElementById(`note-input-${articleId}`);
+      const statusEl = document.getElementById(`note-status-${articleId}`);
+      if (!inputEl || !statusEl) return;
+
+      const noteText = inputEl.value;
       const current = interactions[articleId] || { is_favourite: false, personal_note: "" };
       interactions[articleId] = { ...current, personal_note: noteText };
 
-      const statusEl = document.getElementById(`note-status-${articleId}`);
+      statusEl.className = "text-[11px] text-stone-500 font-medium";
       statusEl.textContent = "Saving...";
 
       const { error } = await db.from("user_article_interactions").upsert({
         user_id: currentUser.id,
         article_id: articleId,
-        is_favourite: current.is_favourite,
+        is_favourite: Boolean(current.is_favourite),
         personal_note: noteText,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,article_id" });
 
       if (error) {
-        statusEl.textContent = "Error: " + error.message;
+        statusEl.className = "text-[11px] text-red-600 font-semibold";
+        statusEl.textContent = "Failed: " + error.message;
         return;
       }
+
+      statusEl.className = "text-[11px] text-emerald-700 font-medium";
       statusEl.textContent = "Saved to notebook ✓";
       setTimeout(() => { statusEl.textContent = ""; }, 2500);
     }
-
-    function updateFavCount() {
-      const count = Object.values(interactions).filter(i => i.is_favourite).length;
-      document.getElementById("fav-count").textContent = count;
-    }
+    
 
     // =========================================================================
     // 5. PROFILE DRAWER & CUSTOM FEED (USES UPSERT SO IT ALWAYS PERSISTS)
