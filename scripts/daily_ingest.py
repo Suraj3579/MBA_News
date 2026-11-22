@@ -8,7 +8,7 @@ from datetime import date
 from google import genai
 from supabase import create_client
 
-# Hard 15-second timeout on all network calls so feedparser NEVER hangs for 6 hours
+# Hard 15-second socket timeout for RSS network calls
 socket.setdefaulttimeout(15)
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].strip()
@@ -16,13 +16,18 @@ SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"].strip()
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"].strip()
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-gemini = genai.Client(api_key=GEMINI_API_KEY)
 
+# Enforce a 20-second (20,000 ms) timeout on every Gemini API call so stalled requests fail over fast
+gemini = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options={"timeout": 20000},
+)
+
+# Fast, high-quota Flash models only (avoids slow Pro timeouts)
 MODEL_FALLBACK_CHAIN = [
-    "gemini-3.8-flash",
-    "gemini-3.8-flash-lite",
+    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
+    "gemini-2.0-flash",
 ]
 
 RSS_FEEDS = [
@@ -47,7 +52,6 @@ ALLOWED_TAGS = [
 ]
 
 def fetch_feed_safely(feed_url: str):
-    """Fetch RSS XML with an explicit 15s timeout and User-Agent before parsing."""
     req = urllib.request.Request(
         feed_url,
         headers={"User-Agent": "Mozilla/5.0 (compatible; TheDailyBriefBot/1.0)"},
@@ -58,26 +62,18 @@ def fetch_feed_safely(feed_url: str):
 
 def generate_with_fallback(prompt: str) -> str:
     last_error = None
-    for attempt in range(2):
-        for model_name in MODEL_FALLBACK_CHAIN:
-            try:
-                response = gemini.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config={"response_mime_type": "application/json"},
-                )
-                return response.text
-            except Exception as err:
-                last_error = err
-                err_str = str(err)
-                if "503" in err_str or "429" in err_str or "UNAVAILABLE" in err_str:
-                    print(f"    [Fallback] {model_name} busy, switching model...", flush=True)
-                    time.sleep(1.5)
-                    continue
-                if "404" in err_str or "NOT_FOUND" in err_str:
-                    continue
-                raise err
-        time.sleep(5)
+    for model_name in MODEL_FALLBACK_CHAIN:
+        try:
+            response = gemini.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config={"response_mime_type": "application/json"},
+            )
+            return response.text
+        except Exception as err:
+            last_error = err
+            print(f"    [Fallback] {model_name} failed ({type(err).__name__}), trying next model...", flush=True)
+            time.sleep(1)
     raise last_error
 
 def analyze_article(source: str, title: str, abstract: str) -> dict:
@@ -106,6 +102,12 @@ def analyze_article(source: str, title: str, abstract: str) -> dict:
 def main():
     today_str = date.today().isoformat()
     print(f"Starting The Daily Brief ingestion for {today_str}...", flush=True)
+
+    # Load all existing URLs in 1 query instead of 45 separate queries
+    existing_rows = supabase.table("articles").select("url").execute().data or []
+    existing_urls = {row["url"] for row in existing_rows}
+    print(f"Loaded {len(existing_urls)} existing URLs from database.", flush=True)
+
     processed_urls = set()
     saved_count = 0
 
@@ -114,24 +116,19 @@ def main():
         try:
             feed = fetch_feed_safely(feed_url)
         except Exception as feed_err:
-            print(f"  [Feed Timeout/Error] Skipping {feed_url} -> {feed_err}", flush=True)
+            print(f"  [Feed Skip] {feed_url} -> {feed_err}", flush=True)
             continue
 
-        print(f"  -> Found {len(feed.entries)} entries in feed", flush=True)
+        print(f"  -> Found {len(feed.entries)} entries", flush=True)
 
         for entry in feed.entries[:5]:
             url = getattr(entry, "link", "").strip()
             title = getattr(entry, "title", "").strip()
             abstract = getattr(entry, "summary", "").strip()
 
-            if not url or not title or url in processed_urls:
+            if not url or not title or url in processed_urls or url in existing_urls:
                 continue
             processed_urls.add(url)
-
-            existing = supabase.table("articles").select("id").eq("url", url).execute()
-            if existing.data:
-                print(f"  [Skip - Exists] {title[:55]}", flush=True)
-                continue
 
             try:
                 enriched = analyze_article(source, title, abstract)
@@ -144,12 +141,13 @@ def main():
                     "mba_takeaway": enriched["mba_takeaway"],
                     "tags": enriched["tags"],
                 }).execute()
+                existing_urls.add(url)
                 saved_count += 1
                 print(f"  [Saved #{saved_count}] {source}: {title[:55]}", flush=True)
-                time.sleep(3.5)
+                time.sleep(2)
             except Exception as err:
-                print(f"  [Error] {title[:40]} -> {err}", flush=True)
-                time.sleep(4)
+                print(f"  [Skip Article] {title[:40]} -> {err}", flush=True)
+                time.sleep(2)
 
     print(f"Ingestion complete. Total new articles saved today: {saved_count}", flush=True)
 
