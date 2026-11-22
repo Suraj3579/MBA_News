@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Daily Brief — Global MBA Intelligence</title>
+  <title>The Daily Brief — Less noise. More insight.</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,14 +54,23 @@
           B
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="serif text-xl sm:text-2xl font-bold tracking-tight text-stone-900 leading-none">The Daily Brief</h1>
-            <span class="hidden sm:inline-block text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full bg-stone-200/70 text-stone-700">
-              MBA Edition
-            </span>
-          </div>
-          <p class="text-[11px] text-stone-500 tracking-wide mt-0.5">Executive News Synthesis &amp; Curriculum Intelligence</p>
+          <h1 class="serif text-xl sm:text-2xl font-bold tracking-tight text-stone-900 leading-none">The Daily Brief</h1>
+          <p class="text-[11px] text-stone-500 tracking-wide mt-0.5">Less noise. More insight.</p>
         </div>
+      </div>
+
+      <!-- GUEST SIGN-IN BUTTON -->
+      <div id="guest-nav" class="flex items-center gap-2.5">
+        <button onclick="openLoginModal('Sign in to like articles, save study notes, and customize your feed.')"
+          class="flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-2xs transition cursor-pointer">
+          <svg class="w-3.5 h-3.5 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+          </svg>
+          <span>Sign in</span>
+        </button>
       </div>
 
       <!-- AUTHENTICATED NAV CONTROLS -->
@@ -69,69 +78,39 @@
         <button onclick="toggleProfileDrawer()"
           class="flex items-center gap-2 bg-white hover:bg-stone-100 border border-stone-200/90 px-3.5 py-1.5 rounded-full text-xs font-medium text-stone-800 shadow-2xs transition cursor-pointer">
           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span id="nav-student-name">Student Profile</span>
+          <span id="nav-student-name">Profile</span>
         </button>
         <button onclick="signOut()"
           class="text-xs font-medium text-stone-500 hover:text-stone-900 px-2.5 py-1.5 rounded-full hover:bg-stone-200/50 transition cursor-pointer">
-          Sign Out
+          Sign out
         </button>
       </div>
     </div>
   </header>
 
-  <!-- LOGIN GATE (GOOGLE OAUTH ONLY) -->
-  <main id="auth-screen" class="flex-1 flex items-center justify-center p-6">
-    <div class="max-w-md w-full bg-white border border-stone-200/90 rounded-3xl shadow-sm p-8 sm:p-10">
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200/70 text-xs font-semibold mb-5">
-        <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-        University &amp; Business School Access
-      </div>
-      <h2 class="serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-3">
-        Your Morning Market Briefing.
-      </h2>
-      <p class="text-sm text-stone-600 mb-8 leading-relaxed">
-        Distilled daily executive summaries from the <em>Financial Times</em>, <em>The Economist</em>, and <em>The New York Times</em>—mapped to MBA frameworks with personal study notes.
-      </p>
-
-      <button id="google-login-btn" type="button" onclick="handleGoogleLogin()"
-        class="w-full flex items-center justify-center gap-3 bg-stone-900 hover:bg-stone-800 text-white font-semibold py-3.5 rounded-xl text-sm transition shadow-xs cursor-pointer">
-        <svg class="w-4 h-4 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
-          <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
-          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
-        </svg>
-        Continue with Google
-      </button>
-
-      <p id="login-feedback" class="mt-4 text-xs text-center text-red-600 hidden"></p>
-
-      <div class="mt-8 pt-5 border-t border-stone-100 text-xs text-stone-500 leading-relaxed">
-        Full article links open directly on each publisher's platform via your university library or institutional subscription.
-      </div>
-    </div>
-  </main>
-
-  <!-- MAIN BRIEFING DASHBOARD -->
-  <main id="app-screen" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+  <!-- MAIN BRIEFING DASHBOARD (OPEN TO ALL VISITORS) -->
+  <main id="app-screen" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
     <!-- MASTHEAD & EDITION CONTROLS -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5 pb-7 border-b border-stone-200">
-      <div>
-        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-amber-800 mb-1.5">
-          <span>Daily Digest</span>
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-7 border-b border-stone-200">
+      <div class="max-w-2xl">
+        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-amber-800 mb-2">
+          <span id="edition-date-label">Today's Edition</span>
           <span class="text-stone-300">•</span>
-          <span id="edition-count-badge" class="text-stone-600">Loading edition...</span>
+          <span id="edition-count-badge" class="text-stone-600">Loading...</span>
         </div>
-        <h2 id="edition-heading" class="serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight">
-          Today's Briefing
+        <h2 class="serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight leading-tight">
+          Good morning. Here’s your daily brief.
         </h2>
+        <p class="text-sm sm:text-base text-stone-600 mt-1.5">
+          A clear, concise look at today’s most important stories.
+        </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2.5">
         <!-- Date Selector -->
         <div class="flex items-center gap-2 bg-white border border-stone-200 rounded-full px-3.5 py-1.5 shadow-2xs">
-          <label for="date-picker" class="text-xs font-medium text-stone-500">Edition:</label>
+          <label for="date-picker" class="text-xs font-medium text-stone-500">Date:</label>
           <input type="date" id="date-picker" onchange="loadArticlesForDate(this.value)"
             class="text-xs font-semibold text-stone-900 focus:outline-none bg-transparent cursor-pointer" />
         </div>
@@ -139,10 +118,10 @@
         <!-- Custom Feed Toggle -->
         <button id="my-feed-toggle" onclick="toggleMyFeedMode()"
           class="px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer">
-          My Custom Feed
+          My Feed
         </button>
 
-        <!-- Favourites Toggle -->
+        <!-- Saved / Liked Toggle -->
         <button id="fav-toggle" onclick="toggleFavouritesOnly()"
           class="px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer">
           ★ Saved (<span id="fav-count">0</span>)
@@ -155,19 +134,19 @@
       <div class="flex flex-col sm:flex-row gap-3">
         <div class="relative flex-1">
           <input id="search-input" type="text" oninput="renderArticles()"
-            placeholder="Search headlines, companies, MBA frameworks, or your notes..."
+            placeholder="Search stories, companies, or insights..."
             class="w-full bg-white border border-stone-200 rounded-xl pl-4 pr-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-800 transition" />
         </div>
         <select id="source-filter" onchange="renderArticles()"
           class="bg-white border border-stone-200 rounded-xl px-4 py-2.5 text-sm font-medium text-stone-700 focus:outline-none focus:border-stone-800 cursor-pointer">
-          <option value="ALL">All Publications</option>
+          <option value="ALL">All Sources</option>
           <option value="Financial Times">Financial Times</option>
           <option value="The Economist">The Economist</option>
           <option value="The New York Times">The New York Times</option>
         </select>
       </div>
 
-      <!-- MBA TOPIC TAG PILLS -->
+      <!-- TOPIC TAG PILLS -->
       <div id="tag-pills" class="flex flex-wrap gap-2"></div>
     </div>
 
@@ -183,52 +162,68 @@
 
     <!-- EMPTY STATE -->
     <div id="empty-state" class="hidden text-center py-20 bg-white border border-stone-200/80 rounded-3xl mt-2">
-      <p class="serif text-2xl font-semibold text-stone-900 mb-1.5">No briefings match this view</p>
+      <p class="serif text-2xl font-semibold text-stone-900 mb-1.5">No stories match this view</p>
       <p class="text-sm text-stone-500 max-w-md mx-auto">
-        Try choosing another edition date above, clearing active topic filters, or toggling off "My Custom Feed".
+        Try selecting another date, clearing active topic filters, or viewing all stories.
       </p>
     </div>
   </main>
 
-  <!-- STUDENT PROFILE & PREFERENCES DRAWER -->
+  <!-- LOGIN MODAL (TRIGGERED WHEN GUEST CLICKS LIKE / NOTES / SIGN IN) -->
+  <div id="login-modal" class="hidden fixed inset-0 z-50 bg-stone-950/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="max-w-sm w-full bg-white border border-stone-200 rounded-3xl shadow-xl p-7 relative">
+      <button onclick="closeLoginModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-900 text-xl flex items-center justify-center cursor-pointer">&times;</button>
+
+      <div class="w-9 h-9 rounded-xl bg-stone-900 text-amber-50 font-semibold serif text-xl flex items-center justify-center mb-4">
+        B
+      </div>
+      <h3 class="serif text-2xl font-bold text-stone-900 mb-1.5">The Daily Brief</h3>
+      <p id="login-modal-subtitle" class="text-sm text-stone-600 mb-6 leading-relaxed">
+        Sign in to like articles, save personal notes, and customize your feed.
+      </p>
+
+      <button id="google-login-btn" type="button" onclick="handleGoogleLogin()"
+        class="w-full flex items-center justify-center gap-3 bg-stone-900 hover:bg-stone-800 text-white font-semibold py-3 rounded-xl text-sm transition shadow-xs cursor-pointer">
+        <svg class="w-4 h-4 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+          <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <p id="login-feedback" class="mt-3 text-xs text-center text-red-600 hidden"></p>
+    </div>
+  </div>
+
+  <!-- READER PROFILE & PREFERENCES DRAWER -->
   <div id="profile-drawer" class="hidden fixed inset-0 z-50 bg-stone-950/40 backdrop-blur-xs flex justify-end transition-opacity">
     <div class="bg-white w-full max-w-md h-full p-7 overflow-y-auto shadow-2xl flex flex-col justify-between border-l border-stone-200">
       <div>
         <div class="flex items-center justify-between pb-5 border-b border-stone-200">
           <div>
-            <h3 class="serif text-2xl font-bold text-stone-900">Reader Profile</h3>
-            <p class="text-xs text-stone-500 mt-0.5">Customize your daily MBA feed</p>
+            <h3 class="serif text-2xl font-bold text-stone-900">Your Profile</h3>
+            <p class="text-xs text-stone-500 mt-0.5">Personalize your daily brief</p>
           </div>
           <button onclick="toggleProfileDrawer()" class="w-8 h-8 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-900 text-xl flex items-center justify-center cursor-pointer">&times;</button>
         </div>
 
         <div class="mt-6 space-y-5">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">Google Account</label>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">Account</label>
             <p id="profile-email" class="text-sm font-medium text-stone-800 bg-stone-100/80 px-3.5 py-2.5 rounded-xl border border-stone-200/60"></p>
           </div>
 
           <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">Display Name</label>
-            <input id="profile-name-input" type="text" placeholder="Alex Rivera"
+            <input id="profile-name-input" type="text" placeholder="Your name"
               class="w-full border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-stone-900" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">MBA Concentration / Track</label>
-            <select id="profile-stream-input" class="w-full border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-stone-900">
-              <option>General Management / Core MBA</option>
-              <option>Finance &amp; Capital Markets</option>
-              <option>Strategy &amp; Management Consulting</option>
-              <option>Technology, Product &amp; AI</option>
-              <option>Sustainability &amp; Energy Transition</option>
-              <option>Entrepreneurship &amp; Venture Capital</option>
-            </select>
-          </div>
-
-          <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-2">
-              Preferred Topics (Powers "My Custom Feed")
+              Topics for "My Feed"
             </label>
             <div id="profile-tags-checkboxes" class="space-y-2"></div>
           </div>
@@ -275,8 +270,7 @@
 
     let currentUser = null;
     let userProfile = {
-      full_name: "MBA Reader",
-      stream: "General Management / Core MBA",
+      full_name: "Reader",
       preferred_tags: [...ALL_TAGS]
     };
     let articles = [];
@@ -286,24 +280,27 @@
     let onlyMyCustomFeed = false;
 
     // =========================================================================
-    // 2. GOOGLE OAUTH AUTHENTICATION FLOW
+    // 2. INITIALIZATION & AUTH STATE (GUESTS SEE ARTICLES IMMEDIATELY)
     // =========================================================================
     async function initApp() {
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("date-picker").value = today;
 
-      // Surface any real OAuth error returned in the URL
+      buildTagPills();
+
+      // Surface any OAuth error in the login modal if present
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const oauthError = params.get("error_description") || hashParams.get("error_description");
       if (oauthError) {
+        openLoginModal();
         showLoginError(decodeURIComponent(oauthError.replace(/\+/g, " ")));
       }
 
-      // Listen for sign-in and sign-out events
+      // Listen for sign-in / sign-out events
       db.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
-          document.getElementById("login-feedback").classList.add("hidden");
+          closeLoginModal();
           if (!currentUser || currentUser.id !== session.user.id) {
             await onSignedIn(session.user);
           }
@@ -315,11 +312,27 @@
         }
       });
 
-      // Check existing session on load
-      const { data: { session } } = await db.auth.getSession();
+      // Load articles immediately for everyone, and restore session if logged in
+      const [{ data: { session } }] = await Promise.all([
+        db.auth.getSession(),
+        loadArticlesForDate(today)
+      ]);
+
       if (session?.user && !currentUser) {
         await onSignedIn(session.user);
       }
+    }
+
+    function openLoginModal(customMessage) {
+      if (customMessage) {
+        document.getElementById("login-modal-subtitle").textContent = customMessage;
+      }
+      document.getElementById("login-feedback").classList.add("hidden");
+      document.getElementById("login-modal").classList.remove("hidden");
+    }
+
+    function closeLoginModal() {
+      document.getElementById("login-modal").classList.add("hidden");
     }
 
     function showLoginError(msg) {
@@ -337,9 +350,7 @@
 
       const { error } = await db.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: window.location.origin
-        }
+        options: { redirectTo: window.location.origin }
       });
 
       if (error) {
@@ -357,21 +368,28 @@
 
     async function onSignedIn(user) {
       currentUser = user;
-      document.getElementById("auth-screen").classList.add("hidden");
-      document.getElementById("app-screen").classList.remove("hidden");
+      document.getElementById("guest-nav").classList.add("hidden");
       document.getElementById("user-nav").classList.remove("hidden");
       document.getElementById("user-nav").classList.add("flex");
 
       await loadProfileAndInteractions();
-      buildTagPills();
-      await loadArticlesForDate(document.getElementById("date-picker").value);
+      renderArticles();
     }
 
     function onSignedOut() {
       currentUser = null;
-      document.getElementById("auth-screen").classList.remove("hidden");
-      document.getElementById("app-screen").classList.add("hidden");
+      interactions = {};
+      onlyFavourites = false;
+      onlyMyCustomFeed = false;
+      updateFavCount();
+
+      document.getElementById("guest-nav").classList.remove("hidden");
       document.getElementById("user-nav").classList.add("hidden");
+      document.getElementById("my-feed-toggle").className =
+        "px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer";
+      document.getElementById("fav-toggle").className =
+        "px-4 py-2 rounded-full text-xs font-semibold border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition cursor-pointer";
+      renderArticles();
     }
 
     // =========================================================================
@@ -388,17 +406,14 @@
           id: currentUser.id,
           email: currentUser.email,
           full_name: googleDisplayName || currentUser.email.split("@")[0],
-          stream: "General Management / Core MBA",
           preferred_tags: [...ALL_TAGS]
         };
-        const { error: upsertErr } = await db.from("profiles").upsert(userProfile, { onConflict: "id" });
-        if (upsertErr) console.error("Profile upsert error:", upsertErr);
+        await db.from("profiles").upsert(userProfile, { onConflict: "id" });
       }
 
       document.getElementById("nav-student-name").textContent = userProfile.full_name || currentUser.email.split("@")[0];
       document.getElementById("profile-email").textContent = currentUser.email;
       document.getElementById("profile-name-input").value = userProfile.full_name || "";
-      document.getElementById("profile-stream-input").value = userProfile.stream || "General Management / Core MBA";
 
       const { data: rows } = await db.from("user_article_interactions").select("*").eq("user_id", currentUser.id);
       interactions = {};
@@ -412,7 +427,7 @@
       const formatted = new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
         weekday: "long", month: "long", day: "numeric", year: "numeric"
       });
-      document.getElementById("edition-heading").textContent = formatted;
+      document.getElementById("edition-date-label").textContent = formatted;
 
       const loader = document.getElementById("loading-grid");
       const grid = document.getElementById("articles-grid");
@@ -438,10 +453,14 @@
     }
 
     // =========================================================================
-    // 4. FAVOURITES & PERSONAL STUDY NOTES
+    // 4. LIKES & PERSONAL NOTES (GATED TO SIGNED-IN USERS)
     // =========================================================================
     async function toggleFavourite(articleId) {
-      if (!currentUser) return;
+      if (!currentUser) {
+        openLoginModal("Sign in with Google to like and save articles to your reading list.");
+        return;
+      }
+
       const current = interactions[articleId] || { is_favourite: false, personal_note: "" };
       const updatedFav = !current.is_favourite;
       interactions[articleId] = { ...current, is_favourite: updatedFav };
@@ -457,12 +476,16 @@
       }, { onConflict: "user_id,article_id" });
 
       if (error) {
-        alert("Could not save favourite: " + error.message);
+        alert("Could not save like: " + error.message);
       }
     }
 
     async function saveStudyNote(articleId) {
-      if (!currentUser) return;
+      if (!currentUser) {
+        openLoginModal("Sign in with Google to write and save personal notes on articles.");
+        return;
+      }
+
       const inputEl = document.getElementById(`note-input-${articleId}`);
       const statusEl = document.getElementById(`note-status-${articleId}`);
       if (!inputEl || !statusEl) return;
@@ -489,13 +512,17 @@
       }
 
       statusEl.className = "text-[11px] text-emerald-700 font-medium";
-      statusEl.textContent = "Saved to notebook ✓";
+      statusEl.textContent = "Saved ✓";
       setTimeout(() => { statusEl.textContent = ""; }, 2500);
     }
-    
+
+    function updateFavCount() {
+      const count = Object.values(interactions).filter(i => i.is_favourite).length;
+      document.getElementById("fav-count").textContent = count;
+    }
 
     // =========================================================================
-    // 5. PROFILE DRAWER & CUSTOM FEED (USES UPSERT SO IT ALWAYS PERSISTS)
+    // 5. PROFILE DRAWER & CUSTOM FEED
     // =========================================================================
     function toggleProfileDrawer() {
       const drawer = document.getElementById("profile-drawer");
@@ -516,14 +543,12 @@
 
     async function saveProfilePreferences() {
       const fullName = document.getElementById("profile-name-input").value.trim();
-      const stream = document.getElementById("profile-stream-input").value;
       const preferredTags = Array.from(document.querySelectorAll(".pref-tag-cb:checked")).map(cb => cb.value);
 
       const updatedProfile = {
         id: currentUser.id,
         email: currentUser.email,
         full_name: fullName || currentUser.email.split("@")[0],
-        stream,
         preferred_tags: preferredTags,
         updated_at: new Date().toISOString()
       };
@@ -568,6 +593,10 @@
     }
 
     function toggleMyFeedMode() {
+      if (!currentUser) {
+        openLoginModal("Sign in with Google to filter stories by your preferred topics.");
+        return;
+      }
       onlyMyCustomFeed = !onlyMyCustomFeed;
       const btn = document.getElementById("my-feed-toggle");
       btn.className = onlyMyCustomFeed
@@ -577,6 +606,10 @@
     }
 
     function toggleFavouritesOnly() {
+      if (!currentUser) {
+        openLoginModal("Sign in with Google to view your liked and saved articles.");
+        return;
+      }
       onlyFavourites = !onlyFavourites;
       const btn = document.getElementById("fav-toggle");
       btn.className = onlyFavourites
@@ -620,7 +653,7 @@
         return true;
       });
 
-      document.getElementById("edition-count-badge").textContent = `${filtered.length} Briefings`;
+      document.getElementById("edition-count-badge").textContent = `${filtered.length} Stories`;
       const grid = document.getElementById("articles-grid");
       const empty = document.getElementById("empty-state");
 
@@ -634,6 +667,34 @@
       grid.innerHTML = filtered.map(art => {
         const state = interactions[art.id] || { is_favourite: false, personal_note: "" };
         const hasNote = state.personal_note.trim().length > 0;
+
+        // Notes UI adapts cleanly: full editor when signed in, gentle sign-in prompt when guest
+        const notesSection = currentUser
+          ? `
+            <details ${hasNote ? "open" : ""}>
+              <summary class="text-xs font-semibold text-stone-500 hover:text-stone-900 cursor-pointer select-none transition">
+                ${hasNote ? "📝 Your Note" : "+ Add Note"}
+              </summary>
+              <div class="mt-2.5 space-y-2">
+                <textarea id="note-input-${art.id}" rows="2" onblur="saveStudyNote('${art.id}')" placeholder="Write your key takeaway..."
+                  class="w-full text-xs bg-stone-50 border border-stone-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:border-stone-800 transition">${escapeHtml(state.personal_note)}</textarea>
+                <div class="flex items-center justify-between">
+                  <span id="note-status-${art.id}" class="text-[11px] text-emerald-700 font-medium"></span>
+                  <button onclick="saveStudyNote('${art.id}')"
+                    class="px-3 py-1 bg-stone-900 text-white rounded-lg text-[11px] font-semibold hover:bg-stone-700 transition cursor-pointer">
+                    Save Note
+                  </button>
+                </div>
+              </div>
+            </details>
+          `
+          : `
+            <button onclick="openLoginModal('Sign in with Google to save personal notes on any story.')"
+              class="text-xs font-medium text-stone-400 hover:text-stone-700 transition cursor-pointer text-left">
+              + Sign in to add notes
+            </button>
+          `;
+
         return `
           <article class="article-card bg-white border border-stone-200/90 rounded-2xl p-6 flex flex-col justify-between">
             <div>
@@ -641,7 +702,7 @@
                 <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass(art.source)}">
                   ${escapeHtml(art.source)}
                 </span>
-                <button onclick="toggleFavourite('${art.id}')" title="Save to Favourites"
+                <button onclick="toggleFavourite('${art.id}')" title="${currentUser ? "Like & Save" : "Sign in to like"}"
                   class="text-lg leading-none transition cursor-pointer ${state.is_favourite ? "text-amber-500 scale-110" : "text-stone-300 hover:text-amber-400"}">
                   ★
                 </button>
@@ -656,7 +717,7 @@
               <p class="text-sm text-stone-600 leading-relaxed mb-4">${escapeHtml(art.summary)}</p>
 
               <div class="bg-stone-50 border-l-2 border-amber-600 px-3.5 py-2.5 rounded-r-xl text-xs text-stone-700 leading-relaxed mb-4">
-                <span class="font-bold text-stone-900">MBA Lens:</span> ${escapeHtml(art.mba_takeaway)}
+                <span class="font-bold text-stone-900">Key Insight:</span> ${escapeHtml(art.mba_takeaway)}
               </div>
             </div>
 
@@ -665,27 +726,11 @@
                 ${(art.tags || []).map(t => `<span class="px-2.5 py-0.5 bg-stone-100 text-stone-700 rounded-md text-[11px] font-medium">${escapeHtml(t)}</span>`).join("")}
               </div>
 
-              <!-- PERSONAL STUDY NOTE -->
-              <details ${hasNote ? "open" : ""}>
-                <summary class="text-xs font-semibold text-stone-500 hover:text-stone-900 cursor-pointer select-none transition">
-                  ${hasNote ? "📝 Study Note" : "+ Add Study Note"}
-                </summary>
-                <div class="mt-2.5 space-y-2">
-                  <textarea id="note-input-${art.id}" rows="2" placeholder="Jot down takeaways for class or study group..."
-                    class="w-full text-xs bg-stone-50 border border-stone-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:border-stone-800 transition">${escapeHtml(state.personal_note)}</textarea>
-                  <div class="flex items-center justify-between">
-                    <span id="note-status-${art.id}" class="text-[11px] text-emerald-700 font-medium"></span>
-                    <button onclick="saveStudyNote('${art.id}')"
-                      class="px-3 py-1 bg-stone-900 text-white rounded-lg text-[11px] font-semibold hover:bg-stone-700 transition cursor-pointer">
-                      Save Note
-                    </button>
-                  </div>
-                </div>
-              </details>
+              ${notesSection}
 
               <a href="${art.url}" target="_blank" rel="noopener noreferrer"
                 class="block w-full text-center py-2.5 rounded-xl bg-stone-900/5 hover:bg-stone-900 text-stone-900 hover:text-white text-xs font-semibold transition">
-                Read Full Article ↗
+                Read Full Story ↗
               </a>
             </div>
           </article>
