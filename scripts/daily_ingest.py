@@ -23,11 +23,11 @@ gemini = genai.Client(
     http_options={"timeout": 20000},
 )
 
-# Fast, high-quota Flash models only (avoids slow Pro timeouts)
+# Active 2026 Flash models (avoids retired gemini-2.0-flash and slow Pro models)
 MODEL_FALLBACK_CHAIN = [
-    "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.8-flash-lite",
     "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
 ]
 
 RSS_FEEDS = [
@@ -72,8 +72,12 @@ def generate_with_fallback(prompt: str) -> str:
             return response.text
         except Exception as err:
             last_error = err
-            print(f"    [Fallback] {model_name} failed ({type(err).__name__}), trying next model...", flush=True)
-            time.sleep(1)
+            err_msg = str(err)
+            if "429" in err_msg or "503" in err_msg:
+                print(f"    [Fallback] {model_name} busy/rate-limited, switching model...", flush=True)
+                time.sleep(2)
+            else:
+                print(f"    [Fallback] {model_name} unavailable ({type(err).__name__}), switching...", flush=True)
     raise last_error
 
 def analyze_article(source: str, title: str, abstract: str) -> dict:
