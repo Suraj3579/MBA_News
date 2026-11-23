@@ -23,6 +23,16 @@ gemini = genai.Client(
     http_options={"timeout": 20000},
 )
 
+# Optional OpenAI fallback if OPENAI_API_KEY is configured in GitHub Secrets
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
+openai_client = None
+if OPENAI_API_KEY:
+    try:
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=20.0)
+    except ImportError:
+        pass
+
 # Active 2026 Flash models (avoids retired gemini-2.0-flash and slow Pro models)
 MODEL_FALLBACK_CHAIN = [
     "gemini-3.8-flash",
@@ -43,12 +53,16 @@ RSS_FEEDS = [
 ]
 
 ALLOWED_TAGS = [
-    "Finance & Markets",
-    "Strategy & Macro",
-    "Tech & AI",
-    "Organisational Behaviour",
-    "Sustainability & ESG",
+    "Macro & Geopolitics",
+    "Capital Markets & M&A",
+    "Corporate Strategy",
+    "AI & Digital Transformation",
+    "Leadership & Governance",
     "Operations & Supply Chain",
+    "Energy & Climate",
+    "Consumer & Retail",
+    "Healthcare & Biotech",
+    "Entrepreneurship & VC",
 ]
 
 def fetch_feed_safely(feed_url: str):
@@ -78,29 +92,43 @@ def generate_with_fallback(prompt: str) -> str:
                 time.sleep(2)
             else:
                 print(f"    [Fallback] {model_name} unavailable ({type(err).__name__}), switching...", flush=True)
+
+    if openai_client:
+        try:
+            print("    [Provider Fallback] Switching to OpenAI gpt-4o-mini...", flush=True)
+            completion = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+            )
+            return completion.choices[0].message.content
+        except Exception as openai_err:
+            last_error = openai_err
+
     raise last_error
 
 def analyze_article(source: str, title: str, abstract: str) -> dict:
     prompt = f"""
-    You are an executive briefing editor for MBA students across global business schools.
+    You are an executive briefing editor for MBA students and business leaders.
     Analyze this news story from {source}:
     Headline: {title}
     Abstract: {abstract}
 
     Respond strictly with valid JSON containing three keys:
     1. "summary": A crisp, objective 2-sentence executive summary of the story.
-    2. "mba_takeaway": One sharp sentence linking this event to an MBA framework (e.g., capital allocation, Porter's Five Forces, corporate governance, organizational incentives, supply chain resilience).
-    3. "tags": A JSON array of 1 or 2 tags chosen ONLY from this exact list: {json.dumps(ALLOWED_TAGS)}.
+    2. "mba_takeaway": One sharp sentence linking this event to an executive/MBA framework (e.g., capital allocation, Porter's Five Forces, corporate governance, pricing power, supply chain resilience).
+    3. "tags": A JSON array of 2 or 3 tags chosen ONLY from this exact list: {json.dumps(ALLOWED_TAGS)}.
     """
     raw_json = generate_with_fallback(prompt)
     data = json.loads(raw_json)
     valid_tags = [t for t in data.get("tags", []) if t in ALLOWED_TAGS]
     if not valid_tags:
-        valid_tags = ["Strategy & Macro"]
+        valid_tags = ["Corporate Strategy"]
     return {
         "summary": data.get("summary", abstract or title),
-        "mba_takeaway": data.get("mba_takeaway", "Relevant to core MBA strategic and market analysis."),
-        "tags": valid_tags[:2],
+        "mba_takeaway": data.get("mba_takeaway", "Relevant to core strategic and market analysis."),
+        "tags": valid_tags[:3],
     }
 
 def main():

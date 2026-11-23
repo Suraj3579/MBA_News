@@ -260,12 +260,16 @@
     });
 
     const ALL_TAGS = [
-      "Finance & Markets",
-      "Strategy & Macro",
-      "Tech & AI",
-      "Organisational Behaviour",
-      "Sustainability & ESG",
-      "Operations & Supply Chain"
+      "Macro & Geopolitics",
+      "Capital Markets & M&A",
+      "Corporate Strategy",
+      "AI & Digital Transformation",
+      "Leadership & Governance",
+      "Operations & Supply Chain",
+      "Energy & Climate",
+      "Consumer & Retail",
+      "Healthcare & Biotech",
+      "Entrepreneurship & VC"
     ];
 
     let currentUser = null;
@@ -533,8 +537,8 @@
           const checked = (userProfile.preferred_tags || []).includes(tag) ? "checked" : "";
           return `
             <label class="flex items-center gap-3 p-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 cursor-pointer text-sm">
-              <input type="checkbox" value="${tag}" ${checked} class="pref-tag-cb rounded text-stone-900" />
-              <span class="font-medium text-stone-800">${tag}</span>
+              <input type="checkbox" value="${escapeHtml(tag)}" ${checked} class="pref-tag-cb rounded text-stone-900" />
+              <span class="font-medium text-stone-800">${escapeHtml(tag)}</span>
             </label>
           `;
         }).join("");
@@ -574,13 +578,13 @@
       container.innerHTML = pills.map(tag => {
         const active = selectedTag === tag;
         return `
-          <button onclick="selectTag('${tag}')"
+          <button onclick="selectTag('${escapeHtml(tag)}')"
             class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
               active
                 ? "bg-stone-900 text-white shadow-2xs"
                 : "bg-white text-stone-600 border border-stone-200 hover:border-stone-300 hover:text-stone-900"
             }">
-            ${tag === "ALL" ? "All Topics" : tag}
+            ${tag === "ALL" ? "All Topics" : escapeHtml(tag)}
           </button>
         `;
       }).join("");
@@ -668,7 +672,6 @@
         const state = interactions[art.id] || { is_favourite: false, personal_note: "" };
         const hasNote = state.personal_note.trim().length > 0;
 
-        // Notes UI adapts cleanly: full editor when signed in, gentle sign-in prompt when guest
         const notesSection = currentUser
           ? `
             <details ${hasNote ? "open" : ""}>
