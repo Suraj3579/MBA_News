@@ -1,14 +1,13 @@
-name: Daily Newspaper Ingestion
+name: Daily Brief Ingestion
 
 on:
   schedule:
-    - cron: '0 6 * * *'
-  workflow_dispatch:
+    - cron: "0 6 * * *" # Runs automatically every day at 06:00 UTC
+  workflow_dispatch:     # Allows manual 1-click runs from the GitHub Actions tab
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,14 +15,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run daily newspaper curation
+      - name: Run daily ingestion
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python -u scripts/daily_ingest.py
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python scripts/daily_ingest.py

@@ -37,6 +37,8 @@
     .badge-ft { background-color: #FDF2E9; color: #9A3412; border: 1px solid #F5D0B5; }
     .badge-econ { background-color: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
     .badge-nyt { background-color: #F3F4F6; color: #1F2937; border: 1px solid #E5E7EB; }
+    .badge-hbr { background-color: #FFF1F2; color: #9F1239; border: 1px solid #FECDD3; }
+    .badge-bloomberg { background-color: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE; }
     @keyframes pulseSoft {
       0%, 100% { opacity: 0.55; }
       50% { opacity: 1; }
@@ -143,6 +145,8 @@
           <option value="Financial Times">Financial Times</option>
           <option value="The Economist">The Economist</option>
           <option value="The New York Times">The New York Times</option>
+          <option value="Harvard Business Review">Harvard Business Review</option>
+          <option value="Bloomberg">Bloomberg</option>
         </select>
       </div>
 
@@ -625,6 +629,8 @@
     function badgeClass(source) {
       if (source.includes("Financial Times")) return "badge-ft";
       if (source.includes("Economist")) return "badge-econ";
+      if (source.includes("Harvard Business Review")) return "badge-hbr";
+      if (source.includes("Bloomberg")) return "badge-bloomberg";
       return "badge-nyt";
     }
 
