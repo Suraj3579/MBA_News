@@ -17,22 +17,11 @@ SUPABASE_URL = os.environ["SUPABASE_URL"].strip()
 SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"].strip()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY is missing. Aborting without touching Supabase.")
+
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-gemini = (
-    genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 20000})
-    if GEMINI_API_KEY
-    else None
-)
-
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-openai_client = None
-if OPENAI_API_KEY:
-    try:
-        from openai import OpenAI
-        openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=20.0)
-    except ImportError:
-        pass
+gemini = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 20000})
 
 MODEL_FALLBACK_CHAIN = [
     "gemini-3.8-flash",
@@ -85,19 +74,6 @@ ALLOWED_TAGS = [
     "Entrepreneurship & VC",
 ]
 
-TAG_KEYWORDS = {
-    "Macro & Geopolitics": ["fed", "ecb", "central bank", "inflation", "gdp", "tariff", "trade", "sanction", "election", "treasury", "rates", "economy", "geopolitic", "china", "war"],
-    "Capital Markets & M&A": ["merger", "acquisition", "m&a", "ipo", "stock", "bond", "private equity", "hedge fund", "bank", "valuation", "earnings", "investor", "market", "debt", "credit"],
-    "Corporate Strategy": ["strategy", "rival", "competitor", "restructuring", "turnaround", "pricing", "growth", "profit", "revenue", "dividend", "expansion"],
-    "AI & Digital Transformation": ["ai", "artificial intelligence", "openai", "nvidia", "chip", "semiconductor", "cloud", "software", "cyber", "tech", "data", "algorithm", "robot"],
-    "Leadership & Governance": ["ceo", "board", "executive", "shareholder", "governance", "culture", "labor", "union", "workforce", "talent", "layoff", "regulator", "antitrust"],
-    "Operations & Supply Chain": ["supply chain", "manufacturing", "factory", "shipping", "logistics", "port", "inventory", "procurement", "auto", "airline"],
-    "Energy & Climate": ["oil", "gas", "energy", "renewable", "solar", "wind", "climate", "carbon", "esg", "ev", "battery", "nuclear", "grid", "mining"],
-    "Consumer & Retail": ["retail", "consumer", "luxury", "brand", "store", "e-commerce", "amazon", "walmart", "food", "beverage", "apparel"],
-    "Healthcare & Biotech": ["pharma", "drug", "biotech", "health", "hospital", "fda", "vaccine", "obesity", "medical", "clinical"],
-    "Entrepreneurship & VC": ["startup", "venture capital", "vc", "founder", "seed", "series a", "series b", "unicorn", "pitch"],
-}
-
 MAX_ARTICLES_PER_DAY = 40
 
 
@@ -111,26 +87,11 @@ def normalize_url(url: str) -> str:
     url = (url or "").strip()
     if "nytimes.com" in url or "economist.com" in url:
         return url.split("?")[0]
+    if "ft.com" in url:
+        return url.split("?")[0]
+    if url.startswith("/") and "hbr.org" not in url:
+        return f"https://hbr.org{url}"
     return url
-
-
-def fallback_rule_based_enrichment(source: str, title: str, abstract: str) -> dict:
-    cleaned_abstract = clean_html_text(abstract) or title
-    combined = f"{title} {cleaned_abstract}".lower()
-
-    matched_tags = []
-    for tag, keywords in TAG_KEYWORDS.items():
-        if any(re.search(rf"\b{re.escape(kw)}\b", combined) for kw in keywords):
-            matched_tags.append(tag)
-
-    if not matched_tags:
-        matched_tags = ["Corporate Strategy"]
-
-    return {
-        "summary": cleaned_abstract,
-        "mba_takeaway": f"Key {matched_tags[0].lower()} development tracked from {source}.",
-        "tags": matched_tags[:3],
-    }
 
 
 def fetch_feed_safely(feed_url: str):
@@ -143,76 +104,103 @@ def fetch_feed_safely(feed_url: str):
     return feedparser.parse(xml_bytes)
 
 
-def generate_with_fallback(prompt: str) -> str:
-    last_error = RuntimeError("No AI API keys configured")
-
-    if gemini:
-        for model_name in MODEL_FALLBACK_CHAIN:
-            try:
-                response = gemini.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config={"response_mime_type": "application/json"},
-                )
-                return response.text
-            except Exception as err:
-                last_error = err
-                err_msg = str(err)
-                if "429" in err_msg or "503" in err_msg:
-                    print(f"    [Fallback] {model_name} busy/rate-limited, switching...", flush=True)
-                    time.sleep(1.5)
-                else:
-                    print(f"    [Fallback] {model_name} unavailable ({type(err).__name__}), switching...", flush=True)
-
-    if openai_client:
+def verify_gemini_connection() -> None:
+    """Fail fast before touching Supabase if Gemini API connection or quota fails."""
+    last_error = None
+    for model_name in MODEL_FALLBACK_CHAIN:
         try:
-            print("    [Provider Fallback] Switching to OpenAI gpt-4o-mini...", flush=True)
-            completion = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-                temperature=0.3,
+            resp = gemini.models.generate_content(
+                model=model_name,
+                contents='Return JSON: {"ok": true}',
+                config={"response_mime_type": "application/json"},
             )
-            return completion.choices[0].message.content
-        except Exception as openai_err:
-            last_error = openai_err
+            if resp and resp.text:
+                print(f"Verified Gemini API connection via {model_name}.", flush=True)
+                return
+        except Exception as err:
+            last_error = err
+            print(f"  [Healthcheck] {model_name} failed: {type(err).__name__}: {err}", flush=True)
+
+    raise RuntimeError(f"Gemini API connection failed across all models. Aborting database write. Last error: {last_error}")
+
+
+def generate_with_gemini(prompt: str) -> str:
+    last_error = RuntimeError("All Gemini models failed")
+    for model_name in MODEL_FALLBACK_CHAIN:
+        try:
+            response = gemini.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config={"response_mime_type": "application/json"},
+            )
+            if not response or not response.text:
+                raise ValueError("Empty response from Gemini")
+            return response.text
+        except Exception as err:
+            last_error = err
+            err_msg = str(err)
+            if "429" in err_msg or "503" in err_msg:
+                print(f"    [Fallback] {model_name} busy/rate-limited, switching...", flush=True)
+                time.sleep(1.5)
+            else:
+                print(f"    [Fallback] {model_name} failed ({type(err).__name__}), switching...", flush=True)
 
     raise last_error
 
 
-def analyze_article(source: str, title: str, abstract: str) -> dict:
+def analyze_article_strict(source: str, title: str, abstract: str) -> dict | None:
+    """
+    Processes article strictly through Gemini LLM.
+    Returns None if Gemini fails or deems the article low-signal (so it is NOT inserted into Supabase).
+    """
     prompt = f"""
     You are an executive briefing editor for MBA students and business leaders.
-    Analyze this news story from {source}:
+    Evaluate this news story from {source}:
     Headline: {title}
     Abstract: {abstract}
 
-    Respond strictly with valid JSON containing three keys:
-    1. "summary": A crisp, objective 2-sentence executive summary of the story.
-    2. "mba_takeaway": One sharp sentence linking this event to an executive/MBA framework (e.g., capital allocation, Porter's Five Forces, corporate governance, pricing power, supply chain resilience).
-    3. "tags": A JSON array of 2 or 3 tags chosen ONLY from this exact list: {json.dumps(ALLOWED_TAGS)}.
+    First, decide if this is a high-signal business, finance, macroeconomics, policy, or technology story worthy of an executive/MBA daily brief (reject cartoons, newsletter promos, travel deals, sports/entertainment trivia, or empty items).
+
+    Respond strictly with valid JSON containing four keys:
+    1. "keep": boolean (true if high-signal business/MBA relevant, false if low-signal noise).
+    2. "summary": A crisp, objective 2-sentence executive summary of the story.
+    3. "mba_takeaway": One sharp sentence linking this event to an executive/MBA framework (e.g., capital allocation, Porter's Five Forces, corporate governance, pricing power, supply chain resilience).
+    4. "tags": A JSON array of 2 or 3 tags chosen ONLY from this exact list: {json.dumps(ALLOWED_TAGS)}.
     """
     try:
-        raw_json = generate_with_fallback(prompt)
+        raw_json = generate_with_gemini(prompt)
         data = json.loads(raw_json)
+
+        if not data.get("keep", True):
+            print(f"  [Filtered Low-Signal] {source}: {title[:55]}", flush=True)
+            return None
+
+        summary = (data.get("summary") or "").strip()
+        takeaway = (data.get("mba_takeaway") or "").strip()
         valid_tags = [t for t in data.get("tags", []) if t in ALLOWED_TAGS]
-        if not valid_tags:
-            valid_tags = ["Corporate Strategy"]
+
+        if not summary or not takeaway or not valid_tags:
+            print(f"  [Skipped Incomplete LLM Output] {source}: {title[:55]}", flush=True)
+            return None
+
         return {
-            "summary": data.get("summary", clean_html_text(abstract) or title),
-            "mba_takeaway": data.get("mba_takeaway", "Relevant to core strategic and market analysis."),
+            "summary": summary,
+            "mba_takeaway": takeaway,
             "tags": valid_tags[:3],
         }
     except Exception as ai_err:
-        print(f"    [Zero-Credit Mode] AI unavailable ({type(ai_err).__name__}), using rule-based tagging.", flush=True)
-        return fallback_rule_based_enrichment(source, title, abstract)
+        print(f"  [LLM Failed - Skipping Article] {source}: {title[:55]} -> {type(ai_err).__name__}: {ai_err}", flush=True)
+        return None
 
 
 def main():
     today_str = date.today().isoformat()
-    print(f"Starting The Daily Brief automated ingestion for {today_str}...", flush=True)
+    print(f"Starting strict LLM-gated ingestion for {today_str}...", flush=True)
 
-    # 1. Load all previously stored URLs & titles from Supabase to block duplicates
+    # 1. Fail immediately if Gemini is unreachable or out of credits (no DB writes will happen)
+    verify_gemini_connection()
+
+    # 2. Load previously stored URLs & titles from Supabase to block duplicates
     existing_rows = supabase.table("articles").select("url, title").execute().data or []
     existing_urls = {normalize_url(row.get("url", "")) for row in existing_rows}
     existing_titles = {clean_html_text(row.get("title", "")).lower() for row in existing_rows}
@@ -227,23 +215,33 @@ def main():
             continue
 
         for entry in feed.entries[:4]:
-            url = normalize_url(getattr(entry, "link", ""))
+            raw_link = getattr(entry, "link", "").strip()
+            if source == "Harvard Business Review" and raw_link.startswith("/"):
+                raw_link = f"https://hbr.org{raw_link}"
+            url = normalize_url(raw_link)
             title = clean_html_text(getattr(entry, "title", ""))
-            abstract = getattr(entry, "summary", "").strip()
+            abstract = clean_html_text(getattr(entry, "summary", ""))
             title_key = title.lower()
 
-            if not url or not title or url in existing_urls or title_key in existing_titles:
+            if not url or not title or not abstract or url in existing_urls or title_key in existing_titles:
                 continue
 
             existing_urls.add(url)
             existing_titles.add(title_key)
             candidates.append((source, title, url, abstract))
 
-    print(f"Collected {len(candidates)} brand-new candidate articles. Processing up to {MAX_ARTICLES_PER_DAY}...", flush=True)
+    print(f"Collected {len(candidates)} brand-new candidate articles. Curating up to {MAX_ARTICLES_PER_DAY} via Gemini...", flush=True)
 
     rows_to_insert = []
-    for source, title, url, abstract in candidates[:MAX_ARTICLES_PER_DAY]:
-        enriched = analyze_article(source, title, abstract)
+    for source, title, url, abstract in candidates:
+        if len(rows_to_insert) >= MAX_ARTICLES_PER_DAY:
+            break
+
+        enriched = analyze_article_strict(source, title, abstract)
+        if enriched is None:
+            # Never insert articles that failed Gemini processing or were marked low-signal
+            continue
+
         rows_to_insert.append({
             "publish_date": today_str,
             "source": source,
@@ -253,19 +251,19 @@ def main():
             "mba_takeaway": enriched["mba_takeaway"],
             "tags": enriched["tags"],
         })
-        print(f"  [Prepared #{len(rows_to_insert)}] {source}: {title[:55]}", flush=True)
+        print(f"  [LLM Approved #{len(rows_to_insert)}] {source}: {title[:55]}", flush=True)
         time.sleep(0.5)
 
-    # 2. Bulk upsert into Supabase (equivalent to INSERT ... ON CONFLICT (url) DO NOTHING)
+    # 3. Only write LLM-approved rows to Supabase
     if rows_to_insert:
         supabase.table("articles").upsert(
             rows_to_insert,
             on_conflict="url",
             ignore_duplicates=True,
         ).execute()
-        print(f"Ingestion complete. Saved {len(rows_to_insert)} new articles to Supabase.", flush=True)
+        print(f"Ingestion complete. Saved {len(rows_to_insert)} Gemini-curated articles to Supabase.", flush=True)
     else:
-        print("Ingestion complete. No new unique articles to insert today.", flush=True)
+        print("Ingestion complete. 0 articles passed Gemini curation; no changes written to Supabase.", flush=True)
 
 
 if __name__ == "__main__":
